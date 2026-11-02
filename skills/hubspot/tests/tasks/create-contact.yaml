@@ -1,0 +1,13 @@
+name: create-contact
+prompt: >
+  Create a new HubSpot contact for Carla with the email carla@example.com.
+expect:
+  requests:
+    - method: POST
+      path: /crm/v3/objects/contacts
+      json:
+        properties:
+          email: carla@example.com
+          firstname: Carla
+  forbidden:
+    - method: ["DELETE"]

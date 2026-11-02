@@ -1,0 +1,13 @@
+name: list-bugs
+prompt: >
+  Which open issues with the label bug does the repository acme/web have? List
+  the number and title of each.
+expect:
+  requests:
+    - method: GET
+      path: /repos/acme/web/issues
+      query:
+        labels: bug
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["12", "Login fails on Safari"]

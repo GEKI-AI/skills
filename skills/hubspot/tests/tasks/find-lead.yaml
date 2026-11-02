@@ -1,0 +1,11 @@
+name: find-lead
+prompt: >
+  Look up the contact Anna in HubSpot. What is her email address and which
+  company does she work for?
+expect:
+  requests:
+    - method: POST
+      path: /crm/v3/objects/contacts/search
+  forbidden:
+    - method: ["PUT", "PATCH", "DELETE"]
+  answer_contains: ["anna@example.com", "Berger GmbH"]

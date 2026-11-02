@@ -1,0 +1,126 @@
+[
+  {
+    "method": "GET",
+    "path": "/repos/{owner}/{repo}/issues",
+    "body": [
+      {
+        "number": 12, "title": "Login fails on Safari", "state": "open", "user": {"login": "anna"},
+        "labels": [{"name": "bug"}], "assignees": [{"login": "ben"}], "comments": 2,
+        "html_url": "https://github.com/acme/web/issues/12", "updated_at": "2026-10-30T10:00:00Z"
+      },
+      {
+        "number": 30, "title": "Fix login redirect", "state": "open", "user": {"login": "ben"},
+        "labels": [], "assignees": [], "comments": 0, "pull_request": {"url": "https://api.github.com/repos/acme/web/pulls/30"},
+        "html_url": "https://github.com/acme/web/pull/30", "updated_at": "2026-10-31T09:00:00Z"
+      },
+      {
+        "number": 9, "title": "Add dark mode", "state": "open", "user": {"login": "carla"},
+        "labels": [{"name": "enhancement"}], "assignees": [], "comments": 1,
+        "html_url": "https://github.com/acme/web/issues/9", "updated_at": "2026-10-12T10:00:00Z"
+      }
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/repos/{owner}/{repo}/issues/{number}/comments",
+    "body": [
+      {"id": 1001, "user": {"login": "ben"}, "body": "I can reproduce this on Safari 18.", "created_at": "2026-10-29T10:00:00Z", "html_url": "https://github.com/acme/web/issues/12#issuecomment-1001"},
+      {"id": 1002, "user": {"login": "anna"}, "body": "Works in Firefox.", "created_at": "2026-10-30T10:00:00Z", "html_url": "https://github.com/acme/web/issues/12#issuecomment-1002"}
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/repos/{owner}/{repo}/issues/{number}/comments",
+    "status": 201,
+    "body": {"id": 1003, "user": {"login": "tester"}, "body": "Fixed in the next release.", "created_at": "2026-11-02T10:00:00Z", "html_url": "https://github.com/acme/web/issues/12#issuecomment-1003"}
+  },
+  {
+    "method": "GET",
+    "path": "/repos/{owner}/{repo}/issues/{number}",
+    "body": {
+      "number": 12, "title": "Login fails on Safari", "state": "open", "user": {"login": "anna"},
+      "body": "Clicking Login does nothing on Safari 18.", "labels": [{"name": "bug"}], "assignees": [{"login": "ben"}],
+      "comments": 2, "html_url": "https://github.com/acme/web/issues/12", "updated_at": "2026-10-30T10:00:00Z"
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/repos/{owner}/{repo}/issues",
+    "status": 201,
+    "body": {
+      "number": 31, "title": "Login fails", "state": "open", "user": {"login": "tester"}, "body": "Steps to reproduce",
+      "labels": [{"name": "bug"}], "assignees": [], "comments": 0, "html_url": "https://github.com/acme/web/issues/31",
+      "updated_at": "2026-11-02T10:00:00Z"
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/repos/{owner}/{repo}/issues/{number}",
+    "status": 200,
+    "body": {
+      "number": 12, "title": "Login fails on Safari", "state": "closed", "user": {"login": "anna"},
+      "labels": [{"name": "bug"}], "assignees": [], "comments": 2, "html_url": "https://github.com/acme/web/issues/12",
+      "updated_at": "2026-11-02T10:00:00Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/repos/{owner}/{repo}/pulls",
+    "body": [
+      {
+        "number": 30, "title": "Fix login redirect", "state": "open", "draft": false, "user": {"login": "ben"},
+        "head": {"ref": "fix-login"}, "base": {"ref": "main"}, "html_url": "https://github.com/acme/web/pull/30",
+        "updated_at": "2026-10-31T09:00:00Z"
+      }
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/repos/{owner}/{repo}/pulls/{number}/files",
+    "body": [
+      {"filename": "src/login.js", "status": "modified", "additions": 4, "deletions": 1, "patch": "@@ -1,3 +1,6 @@\n-const url = '/'\n+const url = next || '/'\n"},
+      {"filename": "README.md", "status": "modified", "additions": 1, "deletions": 0, "patch": "@@ -1 +1,2 @@\n+Login docs\n"}
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/repos/{owner}/{repo}/pulls/{number}",
+    "body": {
+      "number": 30, "title": "Fix login redirect", "state": "open", "draft": false, "merged": false, "user": {"login": "ben"},
+      "head": {"ref": "fix-login"}, "base": {"ref": "main"}, "body": "Redirects to the next page after login.",
+      "changed_files": 2, "additions": 5, "deletions": 1, "html_url": "https://github.com/acme/web/pull/30",
+      "updated_at": "2026-10-31T09:00:00Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/repos/{owner}/{repo}/contents/docs",
+    "body": [
+      {"name": "setup.md", "path": "docs/setup.md", "type": "file", "size": 120},
+      {"name": "api", "path": "docs/api", "type": "dir", "size": 0}
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/repos/{owner}/{repo}/contents/README.md",
+    "body": {
+      "type": "file", "path": "README.md", "sha": "abc123", "size": 29, "encoding": "base64",
+      "content": "IyBBY21lIFdlYgoKVGhlIGNvbXBhbnkgd2Vic2l0ZS4K"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/search/issues",
+    "body": {
+      "total_count": 1,
+      "incomplete_results": false,
+      "items": [
+        {
+          "number": 12, "title": "Login fails on Safari", "state": "open", "user": {"login": "anna"},
+          "labels": [{"name": "bug"}], "assignees": [], "comments": 2,
+          "html_url": "https://github.com/acme/web/issues/12", "updated_at": "2026-10-30T10:00:00Z"
+        }
+      ]
+    }
+  }
+]

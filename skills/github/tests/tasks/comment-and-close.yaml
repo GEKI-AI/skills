@@ -1,0 +1,16 @@
+name: comment-and-close
+prompt: >
+  Write the comment "Fixed in the next release." on issue 12 of acme/web and
+  then close the issue.
+expect:
+  requests:
+    - method: POST
+      path: /repos/acme/web/issues/12/comments
+      json:
+        body: "re:Fixed in the next release"
+    - method: PATCH
+      path: /repos/acme/web/issues/12
+      json:
+        state: closed
+  forbidden:
+    - method: ["DELETE"]

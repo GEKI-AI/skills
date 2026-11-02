@@ -1,0 +1,15 @@
+name: log-note
+prompt: >
+  Log a note on the HubSpot contact with id 301: "Called, wants a quote."
+expect:
+  requests:
+    - method: POST
+      path: /crm/v3/objects/notes
+      json:
+        properties:
+          hs_note_body: "re:Called, wants a quote"
+        associations:
+          - to:
+              id: "301"
+  forbidden:
+    - method: ["DELETE"]

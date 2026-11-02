@@ -1,0 +1,75 @@
+[
+  {
+    "method": "POST",
+    "path": "/crm/v3/objects/contacts/search",
+    "body": {
+      "total": 2,
+      "results": [
+        {
+          "id": "301", "createdAt": "2026-09-01T10:00:00.000Z", "updatedAt": "2026-10-28T09:30:00.000Z", "archived": false,
+          "properties": {"firstname": "Anna", "lastname": "Berger", "email": "anna@example.com", "phone": null, "company": "Berger GmbH", "lifecyclestage": "lead", "hs_lead_status": "NEW"}
+        },
+        {
+          "id": "302", "createdAt": "2026-09-05T10:00:00.000Z", "updatedAt": "2026-10-20T09:30:00.000Z", "archived": false,
+          "properties": {"firstname": "Anton", "lastname": "Huber", "email": "anton@example.com", "phone": "+43 1 555", "company": "Huber KG", "lifecyclestage": "lead", "hs_lead_status": "OPEN"}
+        }
+      ],
+      "paging": {"next": {"after": "2"}}
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/crm/v3/objects/deals/search",
+    "body": {
+      "total": 1,
+      "results": [
+        {
+          "id": "8801", "createdAt": "2026-10-01T10:00:00.000Z", "updatedAt": "2026-10-30T09:30:00.000Z", "archived": false,
+          "properties": {"dealname": "Berger GmbH renewal", "amount": "24000", "dealstage": "contractsent", "pipeline": "default", "closedate": "2026-12-15"}
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/crm/v3/objects/companies/{id}",
+    "body": {
+      "id": "5123", "createdAt": "2026-08-01T10:00:00.000Z", "updatedAt": "2026-10-28T09:30:00.000Z", "archived": false,
+      "properties": {"name": "Berger GmbH", "domain": "berger.example", "industry": "MACHINERY", "phone": null, "city": "Vienna", "numberofemployees": "45"}
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/crm/v3/objects/contacts/{id}",
+    "body": {
+      "id": "301", "createdAt": "2026-09-01T10:00:00.000Z", "updatedAt": "2026-10-28T09:30:00.000Z", "archived": false,
+      "properties": {"firstname": "Anna", "lastname": "Berger", "email": "anna@example.com", "company": "Berger GmbH", "lifecyclestage": "lead"}
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/crm/v3/objects/contacts",
+    "status": 201,
+    "body": {
+      "id": "303", "createdAt": "2026-11-02T10:00:00.000Z", "updatedAt": "2026-11-02T10:00:00.000Z", "archived": false,
+      "properties": {"email": "carla@example.com", "firstname": "Carla"}
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/crm/v3/objects/deals/{id}",
+    "body": {
+      "id": "8801", "createdAt": "2026-10-01T10:00:00.000Z", "updatedAt": "2026-11-02T10:00:00.000Z", "archived": false,
+      "properties": {"dealname": "Berger GmbH renewal", "dealstage": "closedwon"}
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/crm/v3/objects/notes",
+    "status": 201,
+    "body": {
+      "id": "9001", "createdAt": "2026-11-02T10:00:00.000Z", "updatedAt": "2026-11-02T10:00:00.000Z", "archived": false,
+      "properties": {"hs_note_body": "Called, wants a quote."}
+    }
+  }
+]

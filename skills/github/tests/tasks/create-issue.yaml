@@ -1,0 +1,16 @@
+name: create-issue
+prompt: >
+  Create an issue in acme/web titled "Login fails" with the label bug and the
+  description "Steps to reproduce: open the site and click Login." Give me the
+  link.
+expect:
+  requests:
+    - method: POST
+      path: /repos/acme/web/issues
+      json:
+        title: Login fails
+        labels: ["bug"]
+        body: "re:Steps to reproduce"
+  forbidden:
+    - method: ["DELETE"]
+  answer_contains: ["issues/31"]

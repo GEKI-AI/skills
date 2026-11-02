@@ -1,0 +1,13 @@
+name: review-pr-files
+prompt: >
+  What does pull request 30 in acme/web change? Name the files and describe the
+  change in one sentence.
+expect:
+  requests:
+    - method: GET
+      path: /repos/acme/web/pulls/30
+    - method: GET
+      path: /repos/acme/web/pulls/30/files
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["src/login.js", "README.md"]
