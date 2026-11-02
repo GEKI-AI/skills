@@ -1,0 +1,11 @@
+name: find-printer-tickets
+prompt: >
+  Search our Zammad for tickets about printers and tell me which customers
+  wrote them and what state each ticket is in.
+expect:
+  requests:
+    - method: GET
+      path: /api/v1/tickets/search
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["anna@example.com", "ben@example.com"]

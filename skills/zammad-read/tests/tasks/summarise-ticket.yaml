@@ -1,0 +1,13 @@
+name: summarise-ticket
+prompt: >
+  Summarise Zammad ticket 42 for me: what is the problem and what did we
+  answer so far?
+expect:
+  requests:
+    - method: GET
+      path: /api/v1/tickets/42
+    - method: GET
+      path: /api/v1/ticket_articles/by_ticket/42
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["offline", "restart"]

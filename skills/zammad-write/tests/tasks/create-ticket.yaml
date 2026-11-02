@@ -1,0 +1,18 @@
+name: create-ticket
+prompt: >
+  Open a Zammad ticket with the title "Printer offline" in the group Users for
+  the customer anna@example.com. The message is: "The printer in room 2 is
+  offline."
+expect:
+  requests:
+    - method: POST
+      path: /api/v1/tickets
+      json:
+        title: Printer offline
+        group: Users
+        customer: anna@example.com
+        article:
+          body: "re:printer in room 2 is offline"
+  forbidden:
+    - method: ["DELETE"]
+  answer_contains: ["52043"]

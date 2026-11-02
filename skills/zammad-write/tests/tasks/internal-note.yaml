@@ -1,0 +1,14 @@
+name: internal-note
+prompt: >
+  Add an internal note to Zammad ticket 42 that the customer must not see:
+  "Toner replaced."
+expect:
+  requests:
+    - method: POST
+      path: /api/v1/ticket_articles
+      json:
+        ticket_id: 42
+        internal: true
+        body: "re:Toner replaced"
+  forbidden:
+    - method: ["DELETE"]

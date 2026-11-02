@@ -1,0 +1,76 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/tickets/search",
+    "body": [
+      {
+        "id": 42, "number": "52042", "title": "Printer offline", "state": "open", "priority": "2 normal",
+        "group": "Users", "customer": "anna@example.com", "owner": "-", "created_at": "2026-10-28T08:15:00.000Z",
+        "updated_at": "2026-10-30T14:02:00.000Z"
+      },
+      {
+        "id": 37, "number": "52037", "title": "Printer toner empty", "state": "closed", "priority": "2 normal",
+        "group": "Users", "customer": "ben@example.com", "owner": "agent@example.com", "created_at": "2026-10-20T09:00:00.000Z",
+        "updated_at": "2026-10-21T10:30:00.000Z"
+      }
+    ]
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/tickets/{id}",
+    "body": {
+      "id": 42, "number": "52042", "title": "Printer offline", "state": "open", "priority": "2 normal",
+      "group": "Users", "customer": "anna@example.com", "owner": "-", "created_at": "2026-10-28T08:15:00.000Z",
+      "updated_at": "2026-10-30T14:02:00.000Z"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/ticket_articles/by_ticket/{id}",
+    "body": [
+      {
+        "id": 101, "ticket_id": 42, "type": "email", "sender": "Customer", "internal": false,
+        "from": "Anna Berger <anna@example.com>", "to": "support@example.com", "subject": "Printer offline",
+        "content_type": "text/html", "body": "<div>Hello,<br>the printer in room 2 shows <b>offline</b> since Monday.</div>",
+        "created_at": "2026-10-28T08:15:00.000Z"
+      },
+      {
+        "id": 102, "ticket_id": 42, "type": "note", "sender": "Agent", "internal": true,
+        "from": "Support Agent", "to": null, "subject": "Note", "content_type": "text/plain",
+        "body": "Toner order is late, check with purchasing.", "created_at": "2026-10-29T11:00:00.000Z"
+      },
+      {
+        "id": 103, "ticket_id": 42, "type": "email", "sender": "Agent", "internal": false,
+        "from": "Support <support@example.com>", "to": "anna@example.com", "subject": "Re: Printer offline",
+        "content_type": "text/plain", "body": "We are looking into it. Please restart the printer.",
+        "created_at": "2026-10-30T14:02:00.000Z"
+      }
+    ]
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/knowledge_bases/search",
+    "body": {
+      "details": [
+        {"id": 7, "type": "KnowledgeBase::Answer::Translation", "title": "How to reset your password", "subtitle": "Accounts > Passwords", "url": "/help/en-us/accounts-3/how-to-reset-your-password-7"},
+        {"id": 9, "type": "KnowledgeBase::Answer::Translation", "title": "Password rules", "subtitle": "Accounts > Passwords", "url": "/help/en-us/accounts-3/password-rules-9"}
+      ],
+      "result": [{"id": 7, "type": "KnowledgeBase::Answer::Translation"}, {"id": 9, "type": "KnowledgeBase::Answer::Translation"}]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/knowledge_bases/{kb}/answers/{id}",
+    "body": {
+      "id": 7,
+      "assets": {
+        "KnowledgeBaseAnswerTranslation": {
+          "7": {"id": 7, "title": "How to reset your password", "kb_locale_id": 1, "content_id": 7}
+        },
+        "KnowledgeBaseAnswerTranslationContent": {
+          "7": {"id": 7, "body": "<p>Open the login page and click <b>Forgot password</b>.</p><p>You get an email with a link.</p>"}
+        }
+      }
+    }
+  }
+]

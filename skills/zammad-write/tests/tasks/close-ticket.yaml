@@ -1,0 +1,10 @@
+name: close-ticket
+prompt: Close Zammad ticket 42.
+expect:
+  requests:
+    - method: PUT
+      path: /api/v1/tickets/42
+      json:
+        state: closed
+  forbidden:
+    - method: ["DELETE"]
