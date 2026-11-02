@@ -1,0 +1,41 @@
+name: Bug report
+description: A skill does not work as described.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Do not paste tokens, passwords or customer data. For a security problem, read SECURITY.md instead.
+  - type: input
+    id: skill
+    attributes:
+      label: Skill and version
+      description: The folder name and the `version` from its SKILL.md.
+      placeholder: confluence-read, version 1
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Where do you use it?
+      options:
+        - Pi
+        - Another agent that reads Agent Skills
+        - GEKI (Companybots, Console, Chat or the API)
+        - Only the script, by hand
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you ask, what did you expect, what did you get? Include the JSON error if there is one, with secrets removed.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Your setup
+      description: Python version, the tool and its version or plan (Confluence Cloud, Zammad 6.x, ...), and whether you use a company or a personal token. No secrets.
+    validations:
+      required: false

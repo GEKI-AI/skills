@@ -1,0 +1,33 @@
+name: New tool
+description: Ask for a skill that connects an agent to a tool.
+labels: ["new tool"]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: Tool
+      description: Name and website.
+      placeholder: Jira Cloud, https://www.atlassian.com/software/jira
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: What should an agent do with it?
+      description: Two or three requests you would give the agent. Say which only read and which change data.
+    validations:
+      required: true
+  - type: textarea
+    id: api
+    attributes:
+      label: API and sign-in
+      description: Link to the API docs or the OpenAPI spec. Does the tool use an own instance address? How do people sign in (API token, OAuth)?
+    validations:
+      required: true
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Can you help?
+      options:
+        - label: I can test the skill with an account of this tool.
+        - label: I want to write the skill (read CONTRIBUTING.md first).
