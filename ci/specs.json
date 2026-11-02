@@ -1,0 +1,41 @@
+{
+  "confluence": [
+    {
+      "prefix": "/wiki/api/v2",
+      "strip": true,
+      "url": "https://dac-static.atlassian.com/cloud/confluence/openapi-v2.v3.json",
+      "fixups": ["one-of-to-any-of"]
+    },
+    {
+      "prefix": "/wiki/rest/api",
+      "url": "https://dac-static.atlassian.com/cloud/confluence/swagger.v3.json",
+      "fixups": ["one-of-to-any-of"]
+    }
+  ],
+  "github": [
+    {
+      "prefix": "",
+      "url": "https://raw.githubusercontent.com/github/rest-api-description/c39a86cf87d2ea0eb82200b4729b867953463fed/descriptions/api.github.com/api.github.com.json"
+    }
+  ],
+  "hubspot": [
+    {
+      "prefix": "/crm/v3/objects/contacts",
+      "url": "https://raw.githubusercontent.com/HubSpot/HubSpot-public-api-spec-collection/27a5f43daf390c82cff62ba5214a8246437c0485/PublicApiSpecs/CRM/Contacts/Rollouts/424/v3/contacts.json"
+    },
+    {
+      "prefix": "/crm/v3/objects/companies",
+      "url": "https://raw.githubusercontent.com/HubSpot/HubSpot-public-api-spec-collection/27a5f43daf390c82cff62ba5214a8246437c0485/PublicApiSpecs/CRM/Companies/Rollouts/424/v3/companies.json"
+    },
+    {
+      "prefix": "/crm/v3/objects/deals",
+      "rewrite": "/crm/v3/objects/0-3",
+      "url": "https://raw.githubusercontent.com/HubSpot/HubSpot-public-api-spec-collection/27a5f43daf390c82cff62ba5214a8246437c0485/PublicApiSpecs/CRM/Deals/Rollouts/424/v3/deals.json"
+    },
+    {
+      "prefix": "/crm/v3/objects/notes",
+      "url": "https://raw.githubusercontent.com/HubSpot/HubSpot-public-api-spec-collection/27a5f43daf390c82cff62ba5214a8246437c0485/PublicApiSpecs/CRM/Notes/Rollouts/424/v3/notes.json"
+    }
+  ],
+  "zammad": []
+}

@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SKILLS_REF: git+https://github.com/agentskills/agentskills.git@f130f348f502d9804278a617f86929846896d2e9#subdirectory=skills-ref
+  PRISM_VERSION: 5.16.0
+  PI_VERSION: 1.4.0
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r ci/requirements.txt "$SKILLS_REF"
+      - name: Metadata rules and layout
+        run: python ci/validate.py
+      - name: Agent Skills reference validator (skills-ref)
+        run: python ci/skills_ref_check.py
+      - name: README and catalog are generated
+        run: python ci/catalog.py --check
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: License check
+        run: |
+          packages="$(python ci/declared.py packages '*')"
+          if [ -n "$packages" ]; then pip install $packages; fi
+          python ci/licenses.py --installed
+      - name: Version and changelog
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then base="origin/$BASE_REF"; else base="$BEFORE"; fi
+          python ci/versions.py check --base "$base"
+      - name: Packages the GEKI image lacks
+        run: python ci/image_report.py
+      - name: Tests of the repo tooling
+        run: python -m pytest ci/tests -q -p no:cacheprovider
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl -sSfL -o gitleaks.tar.gz "$base/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o checksums.txt "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep "linux_x64.tar.gz" checksums.txt | sha256sum -c -
+          tar xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --no-banner --redact --verbose
+
+  scripts:
+    name: Script tests (${{ matrix.tool }}, python:3.11-slim)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [confluence, zammad, github, hubspot]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/prism
+            .cache/mocks
+          key: mocks-${{ matrix.tool }}-${{ env.PRISM_VERSION }}-${{ hashFiles('ci/specs.json') }}
+      - name: Start the Prism mocks from the vendor specs
+        run: |
+          [ -x .cache/prism/node_modules/.bin/prism ] || npm install --prefix .cache/prism "@stoplight/prism-cli@${PRISM_VERSION}"
+          python3 ci/mocks.py start "${{ matrix.tool }}" | tee -a "$GITHUB_ENV"
+      - name: Run the tests with only the declared packages
+        run: |
+          upstream="MOCK_UPSTREAM_$(echo '${{ matrix.tool }}' | tr a-z A-Z)"
+          docker run --rm --network host \
+            -e "$upstream=$(printenv "$upstream" || true)" \
+            -v "$PWD:/repo" -w /repo python:3.11-slim \
+            sh ci/run-empty.sh "${{ matrix.tool }}"
+
+  scripts-geki-image:
+    name: Script tests (${{ matrix.tool }}, GEKI image)
+    if: ${{ vars.GEKI_SANDBOX_IMAGE != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [confluence, zammad, github, hubspot]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/prism
+            .cache/mocks
+          key: mocks-${{ matrix.tool }}-${{ env.PRISM_VERSION }}-${{ hashFiles('ci/specs.json') }}
+      - name: Start the Prism mocks
+        run: |
+          [ -x .cache/prism/node_modules/.bin/prism ] || npm install --prefix .cache/prism "@stoplight/prism-cli@${PRISM_VERSION}"
+          python3 ci/mocks.py start "${{ matrix.tool }}" | tee -a "$GITHUB_ENV"
+      - name: Run the tests in the GEKI sandbox image
+        run: |
+          upstream="MOCK_UPSTREAM_$(echo '${{ matrix.tool }}' | tr a-z A-Z)"
+          docker run --rm --network host \
+            -e "$upstream=$(printenv "$upstream" || true)" \
+            -v "$PWD:/repo" -w /repo "${{ vars.GEKI_SANDBOX_IMAGE }}" \
+            sh ci/run-image.sh "${{ matrix.tool }}"
+
+  pi:
+    name: Vanilla Pi finds and runs the skills
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r ci/requirements.txt
+      - name: Install Pi
+        run: npm install -g "@earendil-works/pi-coding-agent@${PI_VERSION}"
+      - name: Pi installs the repo as a package and runs a skill against a mock
+        run: python -m pytest ci/tests/test_pi_package.py ci/tests/test_agent_runner.py -q -p no:cacheprovider
+        env:
+          PI_BIN: pi

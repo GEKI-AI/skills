@@ -1,0 +1,15 @@
+{
+  "name": "@geki-ai/skills",
+  "version": "0.1.0",
+  "description": "Tested Agent Skills for Pi: Confluence, Zammad, GitHub, HubSpot.",
+  "keywords": ["pi-package", "agent-skills", "pi", "skills"],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GEKI-AI/skills.git"
+  },
+  "homepage": "https://github.com/GEKI-AI/skills#readme",
+  "pi": {
+    "skills": ["./skills"]
+  }
+}

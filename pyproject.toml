@@ -1,0 +1,23 @@
+[project]
+name = "geki-skills"
+version = "0.0.0"
+description = "Repo tooling for GEKI-AI/skills. The skills are plain Agent Skills."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["skills", "ci/tests"]
+addopts = "-ra"
+markers = ["real_api: calls the real service, needs REAL_API=1 and credentials"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "S"]
+ignore = ["S101", "S310", "S603", "S607", "E501", "S105", "S106", "S108", "S314"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S", "B"]
+"conftest.py" = ["S"]
