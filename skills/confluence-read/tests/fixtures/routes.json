@@ -1,0 +1,85 @@
+[
+  {
+    "method": "GET",
+    "path": "/wiki/api/v2/spaces",
+    "query": {"keys": "DOCS"},
+    "body": {
+      "results": [{"id": "5001", "key": "DOCS", "name": "Documentation", "type": "global", "status": "current"}],
+      "_links": {}
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/wiki/api/v2/spaces",
+    "body": {
+      "results": [
+        {"id": "5001", "key": "DOCS", "name": "Documentation", "type": "global", "status": "current"},
+        {"id": "5002", "key": "HR", "name": "People and Culture", "type": "global", "status": "current"}
+      ],
+      "_links": {"next": "/wiki/api/v2/spaces?cursor=abc123&limit=2"}
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/wiki/api/v2/spaces/{id}/pages",
+    "body": {
+      "results": [
+        {"id": "10000", "title": "Home", "parentId": null, "status": "current"},
+        {"id": "10001", "title": "Onboarding guide", "parentId": "10000", "status": "current"},
+        {"id": "10002", "title": "Expense policy", "parentId": "10000", "status": "current"}
+      ],
+      "_links": {}
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/wiki/api/v2/pages/{id}/children",
+    "body": {
+      "results": [
+        {"id": "10001", "title": "Onboarding guide", "status": "current"},
+        {"id": "10002", "title": "Expense policy", "status": "current"}
+      ],
+      "_links": {}
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/wiki/api/v2/pages/404",
+    "status": 404,
+    "body": {"errors": [{"status": 404, "code": "NOT_FOUND", "title": "Page not found"}]}
+  },
+  {"method": "GET", "path": "/wiki/api/v2/pages/{id}", "file": "page-10001.json"},
+  {
+    "method": "GET",
+    "path": "/wiki/rest/api/search",
+    "body": {
+      "results": [
+        {
+          "content": {"id": "10001", "type": "page", "title": "Onboarding guide"},
+          "title": "@@@hl@@@Onboarding@@@endhl@@@ guide",
+          "excerpt": "Welcome to Acme. Read the handbook first &amp; meet your buddy.",
+          "url": "/spaces/DOCS/pages/10001/Onboarding+guide",
+          "resultGlobalContainer": {"title": "Documentation", "displayUrl": "/spaces/DOCS"},
+          "entityType": "content",
+          "friendlyLastModified": "Oct 20, 2026"
+        },
+        {
+          "content": {"id": "10005", "type": "page", "title": "Onboarding checklist for managers"},
+          "title": "Onboarding checklist for managers",
+          "excerpt": "Steps for managers.",
+          "url": "/spaces/HR/pages/10005/Onboarding+checklist",
+          "resultGlobalContainer": {"title": "People and Culture", "displayUrl": "/spaces/HR"},
+          "entityType": "content",
+          "friendlyLastModified": "Sep 02, 2026"
+        }
+      ],
+      "start": 0,
+      "limit": 10,
+      "size": 2,
+      "totalSize": 2,
+      "cqlQuery": "type = page",
+      "searchDuration": 12,
+      "_links": {"base": "https://acme.atlassian.net/wiki", "context": "/wiki"}
+    }
+  }
+]

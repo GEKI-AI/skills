@@ -1,0 +1,9 @@
+name: list-spaces
+prompt: Which Confluence spaces do we have? List their names.
+expect:
+  requests:
+    - method: GET
+      path: /wiki/api/v2/spaces
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["Documentation", "People and Culture"]

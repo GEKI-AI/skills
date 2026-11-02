@@ -1,0 +1,17 @@
+name: create-notes
+prompt: >
+  Create a page called "Meeting notes 2026-11-02" in the Confluence space DOCS
+  with this text: "Decided to move the launch to Friday." Give me the link.
+expect:
+  requests:
+    - method: POST
+      path: /wiki/api/v2/pages
+      json:
+        spaceId: "5001"
+        title: Meeting notes 2026-11-02
+        body:
+          representation: storage
+          value: "re:Decided to move the launch to Friday"
+  forbidden:
+    - method: ["DELETE"]
+  answer_contains: ["10077"]

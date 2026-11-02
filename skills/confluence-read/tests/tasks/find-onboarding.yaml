@@ -1,0 +1,13 @@
+name: find-onboarding
+prompt: >
+  Find the page about onboarding in our Confluence and tell me what the
+  first-week list says. Name the page you used.
+expect:
+  requests:
+    - method: GET
+      path: /wiki/rest/api/search
+    - method: GET
+      path: "re:^/wiki/api/v2/pages/10001$"
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["laptop", "Onboarding guide"]

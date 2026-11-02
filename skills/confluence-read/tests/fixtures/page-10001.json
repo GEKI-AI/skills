@@ -1,0 +1,26 @@
+{
+  "id": "10001",
+  "status": "current",
+  "title": "Onboarding guide",
+  "spaceId": "5001",
+  "parentId": "10000",
+  "authorId": "712020:aaaa",
+  "createdAt": "2026-09-01T09:00:00.000Z",
+  "version": {
+    "number": 4,
+    "message": "",
+    "minorEdit": false,
+    "authorId": "712020:aaaa",
+    "createdAt": "2026-10-20T10:00:00.000Z"
+  },
+  "body": {
+    "storage": {
+      "representation": "storage",
+      "value": "<h1>Onboarding guide</h1><p>Welcome to <strong>Acme</strong>. Read the <a href=\"https://acme.example/handbook\">handbook</a> first.</p><h2>First week</h2><ul><li>Get your laptop</li><li>Meet your buddy<ul><li>Daily check-in</li></ul></li></ul><ol><li>Sign the contract</li><li>Set up VPN</li></ol><table><tbody><tr><th>Tool</th><th>Owner</th></tr><tr><td>VPN</td><td>IT</td></tr><tr><td>Payroll</td><td>HR</td></tr></tbody></table><ac:structured-macro ac:name=\"code\"><ac:plain-text-body><![CDATA[vpn connect --profile acme]]></ac:plain-text-body></ac:structured-macro><p>Questions? Ask <code>#help-it</code>.</p>"
+    }
+  },
+  "_links": {
+    "webui": "/spaces/DOCS/pages/10001/Onboarding+guide",
+    "base": "https://acme.atlassian.net/wiki"
+  }
+}

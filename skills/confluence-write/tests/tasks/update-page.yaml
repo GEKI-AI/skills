@@ -1,0 +1,15 @@
+name: update-page
+prompt: >
+  Add the line "Ask IT for the VPN profile." at the end of the Confluence page
+  with id 10001. Keep the rest of the page as it is.
+expect:
+  requests:
+    - method: PUT
+      path: /wiki/api/v2/pages/10001
+      json:
+        version:
+          number: 5
+        body:
+          value: "re:(?s)Old text.*Ask IT for the VPN profile"
+  forbidden:
+    - method: ["DELETE"]
