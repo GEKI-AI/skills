@@ -1,11 +1,14 @@
 """Generate the catalog and the install text from the skill metadata.
 
 Blocks between `<!-- generated:NAME -->` and `<!-- /generated:NAME -->` are
-written by this script: in README.md (`catalog`, `ask-pi`) and in the README.md
-of every skill (`install`, `variables`, `setup`, `tests`).
+written by this script: in README.md (`catalog`) and in the README.md of every skill (`install`, `variables`, `setup`, `tests`, `tested`).
 
-    python ci/catalog.py          write the blocks
-    python ci/catalog.py --check  fail when a block is out of date
+    python ci/catalog.py                       write the blocks
+    python ci/catalog.py --check               fail when a block is out of date
+    python ci/catalog.py --results DIR         also write the `tested` blocks of the skills
+
+The `tested` blocks of the skill READMEs come from the test results (`ci/results.py export DIR` copies
+them from the branch `test-results`). Without `--results` they stay as they are.
 """
 
 from __future__ import annotations
@@ -15,13 +18,8 @@ import re
 import sys
 from pathlib import Path
 
-from common import REPO_URL, ROOT, Skill, load_skills, load_tool
-
-SIGN_IN = {
-    "company": "company token",
-    "person-token": "personal token",
-    "person-oauth": "personal sign-in",
-}
+from common import REPO_URL, ROOT, Skill, load_skills
+from results import load_dir
 
 
 def first_sentence(text: str) -> str:
@@ -49,30 +47,34 @@ def packages_line(skill: Skill) -> str:
     return "The skill needs Python 3.11+ and these packages: " + "; ".join(lines) + "."
 
 
-def catalog_table(skills: list[Skill]) -> str:
-    rows = [
-        "| Tool | Skill | What it does | Access | Sign-in |",
-        "| --- | --- | --- | --- | --- |",
-    ]
-    for skill in sorted(
-        skills, key=lambda s: (load_tool(s.tool).get("name", s.tool).lower(), s.name)
-    ):
-        tool = load_tool(skill.tool)
-        logo = f"tools/{skill.tool}/logo.svg"
-        tool_cell = f'<img src="{logo}" alt="" width="20" height="20"> [{tool.get("name", skill.tool)}]({tool.get("website", "")})'
-        sign_in = ", ".join(SIGN_IN.get(a, a) for a in skill.list("geki-auth"))
-        rows.append(
-            f"| {tool_cell} | [`{skill.name}`](skills/{skill.name}) | {first_sentence(skill.description)} "
-            f"| {skill.get('geki-access')} | {sign_in} |"
+CATEGORY_TITLES = {
+    "knowledge": "Knowledge",
+    "tickets": "Tickets",
+    "crm": "CRM",
+    "dev": "Developer tools",
+    "chat": "Chat",
+    "files": "Files",
+    "finance": "Finance",
+    "hr": "HR",
+    "marketing": "Marketing",
+    "analytics": "Analytics",
+    "other": "Other",
+}
+
+
+def catalog_list(skills: list[Skill]) -> str:
+    """Skills grouped by category, one short line each."""
+    out: list[str] = []
+    for category, title in CATEGORY_TITLES.items():
+        chosen = sorted(
+            (s for s in skills if s.get("geki-category") == category), key=lambda s: s.name
         )
-    return "\n".join(rows)
-
-
-def ask_pi_block(skills: list[Skill]) -> str:
-    out = []
-    for skill in skills:
-        out.append(f"**{skill.name}**\n\n```text\n{ask_pi_sentence(skill.name)}\n```")
-    return "\n\n".join(out)
+        if not chosen:
+            continue
+        out.append(f"### {title}\n")
+        out += [f"- [`{s.name}`](skills/{s.name}): {first_sentence(s.description)}" for s in chosen]
+        out.append("")
+    return "\n".join(out).rstrip("\n")
 
 
 def install_block(skill: Skill) -> str:
@@ -136,11 +138,23 @@ def tests_block(skill: Skill) -> str:
     return "\n".join(
         [
             f"- {tests} script tests (pytest) run against {mock}, on Python 3.11 with only the declared packages.",
-            f"- {tasks} agent tasks: a vanilla Pi with a model runs each task against the mock, three times. A task passes with two of three runs, judged by the requests the mock saw.",
-            "- A read-only run against a real account can be started by hand. It finds drift between the real API and the fixtures.",
-            "",
-            f"[![CI]({REPO_URL}/actions/workflows/ci.yml/badge.svg)]({REPO_URL}/actions/workflows/ci.yml)",
+            f"- {tasks} agent tasks: a vanilla Pi with a model runs each task against the mock, up to three times. A task passes with two passing runs, judged by the requests the mock saw.",
+            "- An optional read-only run against a real account can be started by hand. It is not part of the checks.",
         ]
+    )
+
+
+NOT_TESTED = "No test result is recorded yet."
+
+
+def tested_line(result: dict | None) -> str:
+    if not result:
+        return NOT_TESTED
+    script, agent = result.get("script", {}), result.get("agent", {})
+    return (
+        f"Last verified on {str(result.get('date', ''))[:10]} with the model {result.get('model')}: "
+        f"{script.get('passed', 0)} script tests passed, "
+        f"{agent.get('passed', 0)} of {agent.get('tasks', 0)} agent tasks passed."
     )
 
 
@@ -156,13 +170,12 @@ def replace_block(text: str, name: str, content: str) -> str:
     )
 
 
-def render() -> dict[Path, str]:
+def render(results: dict[str, dict] | None = None) -> dict[Path, str]:
     skills = load_skills()
     out: dict[Path, str] = {}
     readme = ROOT / "README.md"
     text = readme.read_text(encoding="utf-8")
-    text = replace_block(text, "catalog", catalog_table(skills))
-    text = replace_block(text, "ask-pi", ask_pi_block(skills))
+    text = replace_block(text, "catalog", catalog_list(skills))
     out[readme] = text
     for skill in skills:
         path = skill.path / "README.md"
@@ -174,12 +187,19 @@ def render() -> dict[Path, str]:
             ("tests", tests_block),
         ):
             body = replace_block(body, name, fn(skill))
+        if results is not None:
+            body = replace_block(body, "tested", tested_line(results.get(skill.name)))
+        elif not re.search(r"<!-- generated:tested -->", body):
+            raise SystemExit(f"missing block generated:tested in {path}")
         out[path] = body
     return out
 
 
 def main(argv: list[str]) -> int:
-    rendered = render()
+    results = None
+    if "--results" in argv:
+        results = load_dir(Path(argv[argv.index("--results") + 1]))
+    rendered = render(results)
     stale = [p for p, text in rendered.items() if p.read_text(encoding="utf-8") != text]
     if "--check" in argv:
         for path in stale:

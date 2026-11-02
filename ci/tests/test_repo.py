@@ -6,6 +6,7 @@ import threading
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -91,8 +92,9 @@ def test_zip_has_one_folder_logo_and_no_tests():
 
 
 class FakeApi:
-    def __init__(self, rows):
+    def __init__(self, rows, page=100):
         self.rows = rows
+        self.page = page
         self.calls = []
         outer = self
 
@@ -109,7 +111,19 @@ class FakeApi:
 
             def do_GET(self):
                 outer.calls.append(("GET", self.path, None, self.headers.get("Authorization")))
-                self.respond({"data": outer.rows})
+                query = parse_qs(urlparse(self.path).query)
+                rows = outer.rows
+                if "after" in query:
+                    ids = [r["id"] for r in rows]
+                    rows = rows[ids.index(query["after"][0]) + 1 :]
+                chunk = rows[: outer.page]
+                self.respond(
+                    {
+                        "data": chunk,
+                        "has_more": len(rows) > outer.page,
+                        "last_id": chunk[-1]["id"] if chunk else None,
+                    }
+                )
 
             def do_POST(self):
                 body = self.rfile.read(int(self.headers["Content-Length"]))
@@ -145,7 +159,7 @@ def test_publish_creates_a_new_shared_skill():
 
 def test_publish_adds_a_version_and_never_overwrites():
     skill = next(s for s in load_skills() if s.name == "hubspot")
-    api = FakeApi([{"id": "sk_1", "name": "hubspot", "version": 0}])
+    api = FakeApi([{"id": "sk_1", "name": "hubspot", "current_version": 0, "shared_with": "all"}])
     try:
         message = publish.publish_one(publish.Api(api.url, "key-1"), skill)
     finally:
@@ -160,7 +174,7 @@ def test_publish_adds_a_version_and_never_overwrites():
 
 def test_publish_skips_a_version_the_platform_has():
     skill = next(s for s in load_skills() if s.name == "hubspot")
-    api = FakeApi([{"id": "sk_1", "name": "hubspot", "version": 1}])
+    api = FakeApi([{"id": "sk_1", "name": "hubspot", "current_version": 1}])
     try:
         message = publish.publish_one(publish.Api(api.url, "key-1"), skill)
     finally:
@@ -169,9 +183,61 @@ def test_publish_skips_a_version_the_platform_has():
     assert [c[0] for c in api.calls] == ["GET"]
 
 
-def test_publish_without_enable_is_a_dry_run(monkeypatch, capsys):
+def test_publish_shares_a_skill_that_exists_but_is_not_shared():
+    skill = next(s for s in load_skills() if s.name == "hubspot")
+    api = FakeApi([{"id": "sk_1", "name": "hubspot", "current_version": 0, "shared_with": "none"}])
+    try:
+        publish.publish_one(publish.Api(api.url, "key-1"), skill)
+    finally:
+        api.stop()
+    assert b'name="shared_with"\r\n\r\nall' in api.calls[-1][2]
+
+
+def test_publish_finds_the_skill_on_a_later_page():
+    skill = next(s for s in load_skills() if s.name == "hubspot")
+    rows = [{"id": f"sk_{i}", "name": f"other-{i}", "current_version": 1} for i in range(5)]
+    rows.append({"id": "sk_h", "name": "hubspot", "current_version": 1})
+    api = FakeApi(rows, page=2)
+    try:
+        message = publish.publish_one(publish.Api(api.url, "key-1"), skill)
+    finally:
+        api.stop()
+    assert "skip" in message
+    gets = [c[1] for c in api.calls if c[0] == "GET"]
+    assert len(gets) == 3 and "after=sk_1" in gets[1]
+
+
+def test_publish_without_enable_fails_loudly(monkeypatch, capsys):
     monkeypatch.delenv("GEKI_PUBLISH_ENABLED", raising=False)
-    monkeypatch.setattr(sys, "argv", ["publish.py", "--base", ""])
+    monkeypatch.delenv("GEKI_PUBLISH_KEY", raising=False)
+    monkeypatch.setattr(sys, "argv", ["publish.py"])
+    assert publish.main() == 1
+    assert "PUBLISH_ENABLED" in capsys.readouterr().out
+
+
+def test_publish_without_a_key_fails_loudly(monkeypatch, capsys):
+    monkeypatch.setenv("GEKI_PUBLISH_ENABLED", "1")
+    monkeypatch.delenv("GEKI_PUBLISH_KEY", raising=False)
+    monkeypatch.setattr(sys, "argv", ["publish.py"])
+    assert publish.main() == 1
+    assert "GEKI_PUBLISH_KEY" in capsys.readouterr().out
+
+
+def test_publish_stops_before_sending_when_a_skill_is_not_verified(monkeypatch, capsys):
+    monkeypatch.setenv("GEKI_PUBLISH_ENABLED", "1")
+    monkeypatch.setenv("GEKI_PUBLISH_KEY", "key")
+    monkeypatch.setattr(publish, "unverified", lambda skills, ref: ["hubspot"])
+    sent = []
+    monkeypatch.setattr(publish, "publish_one", lambda api, skill: sent.append(skill.name))
+    monkeypatch.setattr(sys, "argv", ["publish.py", "--require-verified"])
+    assert publish.main() == 1
+    assert sent == []
+    assert "hubspot" in capsys.readouterr().out
+
+
+def test_publish_dry_run_prints_without_a_key(monkeypatch, capsys):
+    monkeypatch.delenv("GEKI_PUBLISH_ENABLED", raising=False)
+    monkeypatch.setattr(sys, "argv", ["publish.py", "--dry-run"])
     assert publish.main() == 0
     out = capsys.readouterr().out
-    assert "dry run" in out and "would create and share with all" in out
+    assert "would create and share with all" in out

@@ -1,7 +1,7 @@
 {
   "name": "@geki-ai/skills",
   "version": "0.1.0",
-  "description": "Tested Agent Skills for Pi: Confluence, Zammad, GitHub, HubSpot.",
+  "description": "Tested Agent Skills for Pi: integrations for the tools a company already uses.",
   "keywords": ["pi-package", "agent-skills", "pi", "skills"],
   "license": "Apache-2.0",
   "repository": {

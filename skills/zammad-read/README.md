@@ -62,10 +62,12 @@ In a GEKI bot, `ZAMMAD_URL` is a skill setting of the bot. `ZAMMAD_TOKEN` is eit
 
 <!-- generated:tests -->
 - 9 script tests (pytest) run against a small mock with fixtures, on Python 3.11 with only the declared packages.
-- 2 agent tasks: a vanilla Pi with a model runs each task against the mock, three times. A task passes with two of three runs, judged by the requests the mock saw.
-- A read-only run against a real account can be started by hand. It finds drift between the real API and the fixtures.
-
-[![CI](https://github.com/GEKI-AI/skills/actions/workflows/ci.yml/badge.svg)](https://github.com/GEKI-AI/skills/actions/workflows/ci.yml)
+- 2 agent tasks: a vanilla Pi with a model runs each task against the mock, up to three times. A task passes with two passing runs, judged by the requests the mock saw.
+- An optional read-only run against a real account can be started by hand. It is not part of the checks.
 <!-- /generated:tests -->
+
+<!-- generated:tested -->
+No test result is recorded yet.
+<!-- /generated:tested -->
 
 See [CHANGELOG.md](CHANGELOG.md) for versions.

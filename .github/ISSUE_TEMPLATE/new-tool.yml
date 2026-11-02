@@ -7,7 +7,7 @@ body:
     attributes:
       label: Tool
       description: Name and website.
-      placeholder: Jira Cloud, https://www.atlassian.com/software/jira
+      placeholder: Name of the tool, https://example.com
     validations:
       required: true
   - type: textarea

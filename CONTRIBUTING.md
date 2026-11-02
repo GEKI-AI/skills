@@ -4,9 +4,11 @@ Thanks for helping. This guide is short for now. It gets its final form, with a 
 
 At first the GEKI team writes the skills. Every pull request gets a review. Bug reports, ideas for tools and small fixes are welcome from everyone.
 
+Issues and pull requests on GitHub are welcome. The repository on GitHub is a mirror. The work and the CI happen on GEKI's own Forgejo, so a maintainer applies your pull request there by hand and keeps you as the author. You do not need an account on Forgejo.
+
 ## What belongs here
 
-A skill that connects an agent to a tool through its API: one folder in `skills/`, one folder for the tool in `tools/`. Name a skill by tool and task, for example `confluence-read`. Make a `-read` and a `-write` skill only when the split matters for access rights. Otherwise make one skill.
+A skill that connects an agent to a tool through its API: one folder in `skills/`, one folder for the tool in `tools/`. Name a skill by tool and task, for example `<tool>-read`. Make a `-read` and a `-write` skill only when the split matters for access rights. Otherwise make one skill.
 
 Skills that need features of one product (workspace files, chat cards) do not belong here.
 
@@ -31,7 +33,7 @@ The rules for `SKILL.md` and its `metadata` are in [docs/metadata.md](docs/metad
 
 - Python 3.11 or newer. The standard library plus packages that you declare in `metadata.geki-python`. Use JavaScript only when it is clearly better, for example a vendor SDK that exists only for Node.
 - No install at run time inside the script.
-- The base URL comes from an environment variable with a default (`HUBSPOT_BASE_URL`). For a tool with its own instance the URL is a required setting (`ZAMMAD_URL`). Tests point it at the mock.
+- The base URL comes from an environment variable with a default (`<TOOL>_BASE_URL`). For a tool with its own instance the URL is a required setting (`<TOOL>_URL`). Tests point it at the mock.
 - Secrets come only from environment variables and go only into request headers. Never print them, never put them in a URL, a file or an error message.
 - Subcommands print JSON on stdout. An error is JSON on stderr and exit code 1.
 - All skills of one tool use the same variable names.
@@ -51,15 +53,17 @@ ruff check . && ruff format --check .
 pytest
 ```
 
-`pytest` runs the script tests against the fixture mock. To also check requests against the vendor spec, install Prism (`npm install --prefix .cache/prism @stoplight/prism-cli@5.16.0`), start it with `python ci/mocks.py start <tool>` and export the `MOCK_UPSTREAM_...` line it prints.
+`pytest` runs the script tests against the fixture mock. To also check requests against the vendor spec and to run with only the declared packages, as CI does, install Prism (`sh ci/setup.sh prism`) and run `python ci/run_scripts.py --skills <name>`.
+
+The agent tests need a model key: `GEKI_API_KEY=... python ci/agent_test.py --skill <name>`. Install Pi first (`sh ci/setup.sh pi`, then set `PI_BIN` to `.cache/pi/node_modules/.bin/pi`).
 
 `python ci/catalog.py` rewrites the generated parts of the READMEs. Run it after you change metadata, `references/setup.md` or tests.
 
 ## Pull requests
 
-1. One change per pull request. Conventional Commit titles (`feat(zammad-read): ...`, `fix(github): ...`).
+1. One change per pull request. Conventional Commit titles (`feat(<skill-name>): ...`, `fix(<skill-name>): ...`).
 2. When a skill changes, raise `metadata.version` by one and add an entry to its `CHANGELOG.md`. Changes only to `tests/` or the skill `README.md` do not need a new version.
-3. CI must be green. Pull requests from forks get the static checks and script tests. A maintainer moves the branch into this repository to run the agent tests.
+3. CI must be green. It runs on Forgejo, for the skills your change touches, once a maintainer has applied the pull request there. The check `Skills / tests` sums it up. A maintainer reads the result and tells you what to fix.
 4. A maintainer reviews every pull request. The review looks at what the script sends, where the secret goes, and whether the tests would catch a wrong call.
 
 New tool? Open an issue with the "New tool" template first.

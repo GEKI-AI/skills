@@ -1,0 +1,40 @@
+name: Real API
+
+# Optional, read-only tests against real test accounts, started by hand. They find
+# drift between the real API and the fixtures or the vendor spec. This workflow is
+# not part of "Skills / tests", of publishing or of the READMEs. Started without the
+# secrets of a tool, it fails loudly.
+#
+# Secrets: CONFLUENCE_URL, CONFLUENCE_TOKEN, ZAMMAD_URL, ZAMMAD_TOKEN, GH_TEST_TOKEN
+# (the token for the GitHub test org, used as GITHUB_TOKEN), HUBSPOT_TOKEN.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: "Tool id, for example zammad. Empty: all tools."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  real:
+    name: real-api
+    runs-on: datenhof-ci
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: sh ci/setup.sh venv
+      - name: Read-only tests against the real API
+        env:
+          TOOL: ${{ github.event.inputs.tool }}
+          CONFLUENCE_URL: ${{ secrets.CONFLUENCE_URL }}
+          CONFLUENCE_TOKEN: ${{ secrets.CONFLUENCE_TOKEN }}
+          ZAMMAD_URL: ${{ secrets.ZAMMAD_URL }}
+          ZAMMAD_TOKEN: ${{ secrets.ZAMMAD_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+        run: python ci/real_api.py ${TOOL:+--tool "$TOOL"}

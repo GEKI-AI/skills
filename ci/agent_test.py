@@ -1,14 +1,22 @@
 """Run the agent tasks of the skills with a vanilla Pi against the mocks.
 
-    python ci/agent_test.py [--skill NAME ...] [--runs 3] [--min-pass 2]
+    python ci/agent_test.py [--skill NAME ...] [--runs 3] [--min-pass 2] [--report FILE]
 
 For every task in `skills/<name>/tests/tasks/*.yaml` the script starts the mock
-of the skill (fixtures, and Prism when `MOCK_UPSTREAM_<TOOL>` is set), installs
+of the skill (fixtures, and Prism for tools that have a vendor spec), installs
 the skill like a user would (copied to `~/.agents/skills` of an empty home), and
 runs `pi -p` with the task prompt. A run passes when the requests that the mock
 saw match the task: every `expect.requests` entry has a match, no `forbidden`
 entry has one, the spec mock saw no violation, and the answer holds every
-`answer_contains` text. A task passes with `--min-pass` of `--runs` runs.
+`answer_contains` text. A task passes with `--min-pass` of `--runs` runs. It
+stops early: after `--min-pass` passes, and after more failures than the task can
+afford (two failures of three runs).
+
+Without GEKI_API_KEY nothing can run, and the script fails: a skill is never
+green without a test. A skill without tasks fails too.
+
+The report (JSON) is `{skill: {ok, model, tasks: {name: {passed, passes, runs}}}}`.
+With `$GITHUB_OUTPUT` set, it goes there as `report`.
 
 Environment: GEKI_API_KEY (the key of the Models preset), AGENT_TEST_MODEL
 (default deepseek-v4.1-flash), AGENT_TEST_BASE_URL (default
@@ -35,11 +43,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
-from common import ROOT, TEST_ENV, Skill, load_skills
+from common import TEST_ENV, Skill, load_skills
+from fingerprint import DEFAULT_BASE_URL, DEFAULT_MODEL
+from mocks import serve
 from mockserver import Mock
-
-DEFAULT_MODEL = "deepseek-v4.1-flash"
-DEFAULT_BASE_URL = "https://api.geki.ai/v1"
 
 
 def match_value(want: object, have: object) -> bool:
@@ -103,7 +110,8 @@ def judge(task: dict, answer: str) -> str | None:
         "max_tokens": 5,
     }
     request = urllib.request.Request(
-        os.environ.get("AGENT_TEST_BASE_URL", DEFAULT_BASE_URL).rstrip("/") + "/chat/completions",
+        (os.environ.get("AGENT_TEST_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+        + "/chat/completions",
         data=json.dumps(body).encode(),
         headers={
             "Authorization": f"Bearer {os.environ['GEKI_API_KEY']}",
@@ -189,6 +197,8 @@ def run_once(skill: Skill, task: dict, model: str, base_url: str, timeout: int) 
                 answer, code, err = proc.stdout, proc.returncode, proc.stderr
             except subprocess.TimeoutExpired:
                 answer, code, err = "", 124, "timeout"
+            except OSError as exc:
+                answer, code, err = "", 127, str(exc)
     finally:
         mock.stop()
     problems = check(task, mock.requests, mock.violations, answer)
@@ -220,47 +230,81 @@ def run_task(
     }
 
 
+def skill_report(reports: list[dict], model: str) -> dict:
+    """The compact report of one skill from the reports of its tasks."""
+    tasks = {
+        r["task"]: {
+            "passed": r["passed"],
+            "passes": sum(x["passed"] for x in r["runs"]),
+            "runs": len(r["runs"]),
+        }
+        for r in reports
+    }
+    return {
+        "ok": bool(tasks) and all(t["passed"] for t in tasks.values()),
+        "model": model,
+        "tasks": tasks,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--skill", action="append", default=[])
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--min-pass", type=int, default=2)
     parser.add_argument("--timeout", type=int, default=300)
+    parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     if not os.environ.get("GEKI_API_KEY"):
-        print("GEKI_API_KEY is not set: skipping the agent tests")
-        return 0
-    model = os.environ.get("AGENT_TEST_MODEL", DEFAULT_MODEL)
-    base_url = os.environ.get("AGENT_TEST_BASE_URL", DEFAULT_BASE_URL)
-    reports = []
-    for skill in load_skills():
-        if args.skill and skill.name not in args.skill:
-            continue
-        for path in sorted((skill.path / "tests" / "tasks").glob("*.yaml")):
-            task = yaml.safe_load(path.read_text(encoding="utf-8"))
-            report = run_task(skill, task, args.runs, args.min_pass, model, base_url, args.timeout)
-            reports.append(report)
-            mark = "pass" if report["passed"] else "FAIL"
-            print(
-                f"{mark} {skill.name}/{task['name']}: {sum(r['passed'] for r in report['runs'])}/{len(report['runs'])}"
-            )
-            if not report["passed"]:
-                for index, run in enumerate(report["runs"], 1):
-                    for problem in run["problems"]:
-                        print(f"  run {index}: {problem}")
+        print("GEKI_API_KEY is not set: the agent tests cannot run, so nothing is verified")
+        return 2
+    model = os.environ.get("AGENT_TEST_MODEL") or DEFAULT_MODEL
+    base_url = os.environ.get("AGENT_TEST_BASE_URL") or DEFAULT_BASE_URL
+    skills = [s for s in load_skills() if not args.skill or s.name in args.skill]
+    if args.skill and len(skills) != len(set(args.skill)):
+        print(f"unknown skills: {', '.join(sorted(set(args.skill) - {s.name for s in skills}))}")
+        return 2
+    result: dict[str, dict] = {}
+    lines = ["| Skill | Task | Result |", "| --- | --- | --- |"]
+    for tool in sorted({s.tool for s in skills}):
+        with serve(tool):
+            for skill in (s for s in skills if s.tool == tool):
+                reports = []
+                paths = sorted((skill.path / "tests" / "tasks").glob("*.yaml"))
+                for path in paths:
+                    task = yaml.safe_load(path.read_text(encoding="utf-8"))
+                    report = run_task(
+                        skill, task, args.runs, args.min_pass, model, base_url, args.timeout
+                    )
+                    reports.append(report)
+                    passes = sum(r["passed"] for r in report["runs"])
+                    count = f"{passes}/{len(report['runs'])}"
+                    print(
+                        f"{'pass' if report['passed'] else 'FAIL'} {skill.name}/{task['name']}: {count}"
+                    )
+                    lines.append(
+                        f"| {skill.name} | {task['name']} | {'pass' if report['passed'] else 'FAIL'} ({count}) |"
+                    )
+                    if not report["passed"]:
+                        for index, run in enumerate(report["runs"], 1):
+                            for problem in run["problems"]:
+                                print(f"  run {index}: {problem}")
+                if not paths:
+                    print(f"FAIL {skill.name}: no agent tasks, so nothing is verified")
+                result[skill.name] = skill_report(reports, model)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
-        lines = ["| Skill | Task | Result |", "| --- | --- | --- |"]
-        lines += [
-            f"| {r['skill']} | {r['task']} | {'pass' if r['passed'] else 'FAIL'} ({sum(x['passed'] for x in r['runs'])}/{len(r['runs'])}) |"
-            for r in reports
-        ]
-        Path(summary).write_text("\n".join(lines) + "\n", encoding="utf-8")
-    (ROOT / ".cache").mkdir(exist_ok=True)
-    (ROOT / ".cache" / "agent-report.json").write_text(
-        json.dumps(reports, indent=2), encoding="utf-8"
-    )
-    return 0 if all(r["passed"] for r in reports) else 1
+        with open(summary, "a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
+    text = json.dumps(result, sort_keys=True)
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(text, encoding="utf-8")
+    output = os.environ.get("GITHUB_OUTPUT")
+    if output:
+        with open(output, "a", encoding="utf-8") as handle:
+            handle.write(f"report={text}\n")
+    return 0 if all(r["ok"] for r in result.values()) else 1
 
 
 if __name__ == "__main__":

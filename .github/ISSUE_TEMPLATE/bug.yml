@@ -11,7 +11,7 @@ body:
     attributes:
       label: Skill and version
       description: The folder name and the `version` from its SKILL.md.
-      placeholder: confluence-read, version 1
+      placeholder: <skill-name>, version 1
     validations:
       required: true
   - type: dropdown
@@ -36,6 +36,6 @@ body:
     id: setup
     attributes:
       label: Your setup
-      description: Python version, the tool and its version or plan (Confluence Cloud, Zammad 6.x, ...), and whether you use a company or a personal token. No secrets.
+      description: Python version, the tool and its version or plan, and whether you use a company or a personal token. No secrets.
     validations:
       required: false

@@ -1,3 +1,5 @@
+This repository is a mirror. A maintainer applies the pull request on GEKI's Forgejo, where the CI runs.
+
 ## What changes
 
 <!-- One change per pull request. -->

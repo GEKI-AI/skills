@@ -2,7 +2,7 @@
 
     python ci/skills_ref_check.py
 
-Install it with the pinned commit in `.github/workflows/ci.yml`. The PyPI package
+Install it with the pinned commit `SKILLS_REF` in `ci/pins.env` (`sh ci/setup.sh skills-ref`). The PyPI package
 `skills-ref` installs the command under another name, so the script uses the
 Python API.
 """

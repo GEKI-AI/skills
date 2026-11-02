@@ -15,7 +15,7 @@ Examples of what to report: a script that sends a token anywhere except the requ
 - Secrets come from environment variables and go only into request headers. Tests check this.
 - CI scans for secrets on every pull request.
 - A skill that adopts code from elsewhere names the source and its license, and a maintainer reads that code in full.
-- Publishing to the GEKI catalog needs a manual approval for every run.
+- Publishing to the GEKI catalog happens only when a maintainer pushes a `publish-*` tag, and only for skills with a green test result.
 
 ## What a skill can do
 

@@ -1,22 +1,27 @@
-"""Publish skills with a higher version to the GEKI skills API.
+"""Publish skills to the GEKI skills API.
 
-    python ci/publish.py --base BEFORE_SHA [--dry-run]
+    python ci/publish.py [--base COMMIT] [--only a,b] [--require-verified] [--dry-run]
 
-For every skill whose `metadata.version` is higher than at the base commit
-(or that is new), this builds a zip and calls the GEKI API:
+For every skill this builds a zip and compares the repo `metadata.version` with the
+`current_version` the platform has. Without `--base` that is every skill. With
+`--base`, only skills that are new or have a higher version than at that commit.
 
 - the skill does not exist yet in the GEKI org: `POST /v1/skills`, with
   `shared_with=all` so every org sees it in the catalog.
 - it exists: `POST /v1/skills/{id}` with `mode=new_version`. It never uses
   `overwrite`, so a shared version is never replaced.
+- the platform has the same or a higher version: skipped. A second run does nothing.
 
 The zip has one folder `<name>/` with the skill files, without `tests/`, plus
-`assets/logo.svg` from `tools/<tool>/`. Nothing is sent unless
-`GEKI_PUBLISH_ENABLED=1` and `GEKI_PUBLISH_KEY` are set. Without them the script
-prints what it would do and exits 0.
+`assets/logo.svg` from `tools/<tool>/`.
 
-The shared-skills API is in development. The assumptions about its shape are in
-`docs/publish.md`.
+The script sends nothing unless `GEKI_PUBLISH_ENABLED=1` and `GEKI_PUBLISH_KEY` are
+set, and it fails when they are not (`--dry-run` only prints). With
+`--require-verified` a skill without a green test result for its current files
+(`ci/results.py`) stops the whole run before anything is sent.
+
+The API is `services/geki-api/docs/skills.md` in geki-core, section Shared skills.
+The assumptions are in `docs/publish.md`.
 """
 
 from __future__ import annotations
@@ -102,14 +107,26 @@ class Api:
             with urllib.request.urlopen(request, timeout=120) as response:
                 return json.loads(response.read() or b"{}")
         except urllib.error.HTTPError as exc:
-            raise SystemExit(
-                f"{method} {path}: {exc.code} {exc.read().decode('utf-8', 'replace')[:500]}"
-            ) from exc
+            detail = exc.read().decode("utf-8", "replace")[:500]
+            hint = ""
+            if exc.code == 403 and "staff_only" in detail:
+                hint = " (only a key of the GEKI org may set shared_with)"
+            raise SystemExit(f"{method} {path}: {exc.code} {detail}{hint}") from exc
 
     def find(self, name: str) -> dict | None:
-        data = self.call("GET", "/v1/skills", {"scope": "own", "q": name, "limit": 100})
-        rows = data.get("data", data) if isinstance(data, dict) else data
-        return next((r for r in rows if isinstance(r, dict) and r.get("name") == name), None)
+        """The skill of the key's org with this name. Reads every page of the search."""
+        after = None
+        for _ in range(50):
+            params = {"scope": "own", "q": name, "limit": 100}
+            if after:
+                params["after"] = after
+            data = self.call("GET", "/v1/skills", params)
+            rows = data.get("data", []) if isinstance(data, dict) else data
+            found = next((r for r in rows if isinstance(r, dict) and r.get("name") == name), None)
+            if found or not isinstance(data, dict) or not data.get("has_more"):
+                return found
+            after = data.get("last_id")
+        return None
 
 
 def tags_for(skill: Skill) -> str:
@@ -122,7 +139,7 @@ def publish_one(api: Api | None, skill: Skill) -> str:
     if existing is None:
         action = "create and share with all"
     else:
-        current = existing.get("version") or existing.get("current_version") or 0
+        current = existing.get("current_version") or existing.get("version") or 0
         if int(current) >= skill.version:
             return f"{skill.name}: platform has version {current}, repo has {skill.version}, skip"
         action = f"new_version after {current}"
@@ -135,9 +152,21 @@ def publish_one(api: Api | None, skill: Skill) -> str:
         api.call("POST", "/v1/skills", body=body, content_type=ctype)
     else:
         fields["mode"] = "new_version"
+        if existing.get("shared_with", "all") != "all":
+            fields["shared_with"] = "all"
         body, ctype = multipart(fields, f"{skill.name}.zip", data)
         api.call("POST", f"/v1/skills/{existing['id']}", body=body, content_type=ctype)
     return f"{skill.name}@{skill.version}: {action}"
+
+
+def unverified(skills: list[Skill], ref: str) -> list[str]:
+    from fingerprint import hashes
+    from results import fetch_results, is_verified, load_ref
+
+    fetch_results()
+    results = load_ref(ref)
+    current = hashes(skills)
+    return [s.name for s in skills if not is_verified(s.name, current, results)]
 
 
 def main() -> int:
@@ -146,20 +175,35 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--only", help="comma-separated skill names")
     parser.add_argument("--out", type=Path, help="write the zips here")
+    parser.add_argument("--require-verified", action="store_true")
+    parser.add_argument("--results-ref", default="origin/test-results")
     args = parser.parse_args()
 
     selected = [s for s, before, _ in evaluate(args.base) if before is None or s.version > before]
     if args.only:
         wanted = set(args.only.split(","))
         selected = [s for s in selected if s.name in wanted]
-    enabled = os.environ.get("GEKI_PUBLISH_ENABLED") == "1" and os.environ.get("GEKI_PUBLISH_KEY")
     api = None
-    if enabled and not args.dry_run:
+    if not args.dry_run:
+        if os.environ.get("GEKI_PUBLISH_ENABLED") != "1":
+            print("publishing is not enabled: set the variable PUBLISH_ENABLED to true")
+            return 1
+        if not os.environ.get("GEKI_PUBLISH_KEY"):
+            print("GEKI_PUBLISH_KEY is not set: add the secret of a key of the GEKI org")
+            return 1
         api = Api(
-            os.environ.get("GEKI_API_URL", "https://api.geki.ai"), os.environ["GEKI_PUBLISH_KEY"]
+            os.environ.get("GEKI_API_URL") or "https://api.geki.ai",
+            os.environ["GEKI_PUBLISH_KEY"],
         )
-    elif not args.dry_run:
-        print("publishing is not enabled (GEKI_PUBLISH_ENABLED=1 and GEKI_PUBLISH_KEY): dry run")
+        if args.require_verified:
+            missing = unverified(selected, args.results_ref)
+            if missing:
+                print(
+                    "no green test result for the current files of: "
+                    + ", ".join(missing)
+                    + ". Nothing was published. Run the Skills workflow and tag again."
+                )
+                return 1
     if not selected:
         print("no skill with a higher version")
     for skill in selected:

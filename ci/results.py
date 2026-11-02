@@ -1,0 +1,369 @@
+"""Test results by fingerprint, kept on the branch `test-results`.
+
+Each skill has one small JSON file `<skill>.json` on that branch. It holds the last
+green result: the fingerprint (`ci/fingerprint.py`), the date, the run, the model
+and the pass counts. A skill whose current fingerprint has a green result is
+"already verified" and is not tested again.
+
+    python ci/results.py plan --mode diff|schedule|all [--base REF] [--skills a,b]
+                              [--force] [--nightly N] [--ref origin/test-results]
+    python ci/results.py export DIR [--ref origin/test-results]
+    python ci/results.py push GREEN_JSON [--strict]
+    python ci/results.py verified SKILL [SKILL ...] [--ref origin/test-results]
+
+`plan` prints the plan as JSON and writes `todo`, `count` and `plan` to
+`$GITHUB_OUTPUT`. `push` commits the results of GREEN_JSON (a list of result
+records) and pushes them. A failed push is a warning, and an error with
+`--strict`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+
+from affected import affected_since
+from common import ROOT, load_skills
+from fingerprint import hashes, settings
+
+BRANCH = "test-results"
+REF = f"origin/{BRANCH}"
+WORK = ROOT / ".cache" / "results"
+DEFAULT_NIGHTLY = 10
+COMMITTER = ["-c", "user.name=geki-skills CI", "-c", "user.email=noreply@geki.ai"]
+
+
+def git(*args: str, cwd: Path | None = None, check: bool = True) -> str:
+    result = subprocess.run(
+        ["git", *args], cwd=cwd or ROOT, capture_output=True, text=True, check=False
+    )
+    if check and result.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)}: {result.stderr.strip()}")
+    return result.stdout
+
+
+def fetch_results() -> None:
+    git("fetch", "--quiet", "origin", f"+refs/heads/{BRANCH}:refs/remotes/{REF}", check=False)
+
+
+def load_ref(ref: str = REF) -> dict[str, dict]:
+    """The results on a git ref. Empty when the ref does not exist yet."""
+    if not git("rev-parse", "--verify", "-q", ref, check=False).strip():
+        return {}
+    out: dict[str, dict] = {}
+    for name in git("ls-tree", "--name-only", ref).splitlines():
+        if not name.endswith(".json"):
+            continue
+        try:
+            data = json.loads(git("show", f"{ref}:{name}"))
+        except (json.JSONDecodeError, RuntimeError):
+            continue
+        if isinstance(data, dict) and data.get("skill") == name[:-5]:
+            out[data["skill"]] = data
+    return out
+
+
+def load_dir(folder: Path) -> dict[str, dict]:
+    out: dict[str, dict] = {}
+    for path in sorted(folder.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict) and data.get("skill") == path.stem:
+            out[data["skill"]] = data
+    return out
+
+
+def is_verified(name: str, current: dict[str, str], results: dict[str, dict]) -> bool:
+    result = results.get(name)
+    return bool(
+        result and result.get("status") == "green" and result.get("hash") == current.get(name)
+    )
+
+
+@dataclass
+class Plan:
+    todo: list[str] = field(default_factory=list)
+    reasons: dict[str, str] = field(default_factory=dict)
+    verified: dict[str, dict] = field(default_factory=dict)
+    left_out: dict[str, str] = field(default_factory=dict)
+    fingerprints: dict[str, str] = field(default_factory=dict)
+
+    def as_json(self) -> dict:
+        return {
+            "todo": self.todo,
+            "reasons": self.reasons,
+            "verified": {
+                n: {k: r.get(k) for k in ("date", "run_url", "model")}
+                for n, r in self.verified.items()
+            },
+            "left_out": self.left_out,
+            "fingerprints": self.fingerprints,
+        }
+
+
+def select(
+    names: list[str],
+    current: dict[str, str],
+    results: dict[str, dict],
+    *,
+    mode: str,
+    candidates: list[str] | None = None,
+    nightly: int = DEFAULT_NIGHTLY,
+    force: bool = False,
+) -> Plan:
+    """Which skills need a test run.
+
+    `diff`: the candidates (the affected skills) without a green result for their fingerprint.
+    `schedule`: every skill without one, plus the `nightly` verified skills with the oldest date.
+    `all`: the candidates (all skills by default), without a green result unless `force`.
+    """
+    plan = Plan()
+    wanted = set(names if candidates is None or mode == "schedule" else candidates)
+    verified_pool: list[str] = []
+    for name in names:
+        if name not in wanted:
+            plan.left_out[name] = "not affected by the change"
+        elif force and mode == "all":
+            plan.todo.append(name)
+            plan.reasons[name] = "forced"
+        elif is_verified(name, current, results):
+            plan.verified[name] = results[name]
+            verified_pool.append(name)
+        else:
+            plan.todo.append(name)
+            plan.reasons[name] = (
+                "no green result for this fingerprint" if name in results else "never verified"
+            )
+    if mode == "schedule":
+        oldest = sorted(verified_pool, key=lambda n: str(results[n].get("date", "")))
+        for name in oldest[: max(nightly, 0)]:
+            plan.todo.append(name)
+            plan.reasons[name] = "refresh, oldest verification"
+            del plan.verified[name]
+        for name in oldest[max(nightly, 0) :]:
+            plan.left_out[name] = "verified recently, not due"
+            del plan.verified[name]
+    plan.todo.sort()
+    plan.fingerprints = {name: current[name] for name in plan.todo}
+    return plan
+
+
+def write_outputs(plan: Plan) -> None:
+    path = os.environ.get("GITHUB_OUTPUT")
+    if not path:
+        return
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(f"todo={json.dumps(plan.todo)}\n")
+        handle.write(f"names={','.join(plan.todo)}\n")
+        handle.write(f"count={len(plan.todo)}\n")
+        handle.write(f"plan={json.dumps(plan.as_json(), separators=(',', ':'))}\n")
+
+
+def cmd_plan(args: argparse.Namespace) -> int:
+    skills = load_skills()
+    names = sorted(s.name for s in skills)
+    current = hashes(skills)
+    fetch_results()
+    results = load_ref(args.ref)
+    candidates = None
+    if args.skills:
+        wanted = {n.strip() for n in args.skills.split(",") if n.strip()}
+        unknown = wanted - set(names)
+        if unknown:
+            print(f"unknown skills: {', '.join(sorted(unknown))}", file=sys.stderr)
+            return 2
+        candidates = sorted(wanted)
+    elif args.mode == "diff":
+        candidates, why = affected_since(args.base)
+        print(f"affected: {why}", file=sys.stderr)
+    plan = select(
+        names,
+        current,
+        results,
+        mode=args.mode,
+        candidates=candidates,
+        nightly=args.nightly,
+        force=args.force,
+    )
+    print(json.dumps(plan.as_json(), indent=2))
+    write_outputs(plan)
+    return 0
+
+
+def cmd_export(args: argparse.Namespace) -> int:
+    folder = Path(args.dir)
+    folder.mkdir(parents=True, exist_ok=True)
+    fetch_results()
+    for name, data in load_ref(args.ref).items():
+        (folder / f"{name}.json").write_text(
+            json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+    return 0
+
+
+def cmd_verified(args: argparse.Namespace) -> int:
+    """Exit 1 when a skill has no green result for its current fingerprint."""
+    current = hashes()
+    fetch_results()
+    results = load_ref(args.ref)
+    missing = [n for n in args.skills if not is_verified(n, current, results)]
+    for name in missing:
+        print(f"{name}: no green test result for the current files")
+    return 1 if missing else 0
+
+
+def tested_table(results: dict[str, dict]) -> str:
+    rows = [
+        "| Skill | Verified | Model | Script tests | Agent tasks | Run |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+    for name in sorted(results):
+        r = results[name]
+        script, agent = r.get("script", {}), r.get("agent", {})
+        rows.append(
+            f"| {name} | {str(r.get('date', ''))[:10]} | {r.get('model', '')} "
+            f"| {script.get('passed', 0)} passed | {agent.get('passed', 0)} of {agent.get('tasks', 0)} "
+            f"| {r.get('run_url', '')} |"
+        )
+    return "\n".join(rows) + "\n"
+
+
+BRANCH_README = """# Test results
+
+This branch is written by CI. Do not edit it by hand.
+
+Each `<skill>.json` is the last green test result of one skill: the fingerprint of
+its files and test setup, the date, the model and the pass counts. A skill with a
+green result for its current fingerprint is not tested again. `TESTED.md` lists them.
+"""
+
+
+def prepare_worktree(folder: Path) -> bool:
+    """Check out the results branch at `folder`. Returns False when the branch is new."""
+    if folder.exists():
+        git("worktree", "remove", "--force", str(folder), check=False)
+        shutil.rmtree(folder, ignore_errors=True)
+    git("worktree", "prune", check=False)
+    git("branch", "-D", BRANCH, check=False)
+    fetch_results()
+    if git("rev-parse", "--verify", "-q", REF, check=False).strip():
+        git("worktree", "add", "--quiet", "--detach", str(folder), REF)
+        return True
+    git("worktree", "add", "--quiet", "--detach", str(folder), "HEAD")
+    git("checkout", "--quiet", "--orphan", BRANCH, cwd=folder)
+    git("rm", "-rf", "--quiet", ".", cwd=folder, check=False)
+    return False
+
+
+def write_results(folder: Path, green: list[dict]) -> None:
+    for record in green:
+        (folder / f"{record['skill']}.json").write_text(
+            json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+    (folder / "README.md").write_text(BRANCH_README, encoding="utf-8")
+    (folder / "TESTED.md").write_text(
+        "# Last green results\n\n" + tested_table(load_dir(folder)), encoding="utf-8"
+    )
+
+
+def push_once(green: list[dict], run_url: str) -> None:
+    prepare_worktree(WORK)
+    write_results(WORK, green)
+    git("add", "-A", cwd=WORK)
+    if not git("status", "--porcelain", cwd=WORK).strip():
+        print("results: nothing to save")
+        return
+    names = ", ".join(r["skill"] for r in green)
+    message = f"chore(results): {names}\n\n{run_url}".strip()
+    git(*COMMITTER, "commit", "--quiet", "-m", message, cwd=WORK)
+    git("push", "--quiet", "origin", f"HEAD:refs/heads/{BRANCH}", cwd=WORK)
+    print(f"results: saved {names}")
+
+
+def cmd_push(args: argparse.Namespace) -> int:
+    green = json.loads(Path(args.green).read_text(encoding="utf-8"))
+    if not green:
+        print("results: no green skill to save")
+        return 0
+    run_url = os.environ.get("RUN_URL", "")
+    error = ""
+    for attempt in range(1, 5):
+        try:
+            push_once(green, run_url)
+            return 0
+        except RuntimeError as exc:
+            error = str(exc)
+            print(f"results: attempt {attempt} failed: {error}", file=sys.stderr)
+    level = "error" if args.strict else "warning"
+    print(
+        f"::{level}::the test results could not be saved to the branch {BRANCH}. "
+        f"The next run tests these skills again. {error}"
+    )
+    return 1 if args.strict else 0
+
+
+def record_for(name: str, fingerprint: str, script: dict, agent: dict) -> dict:
+    """The record that is stored for a skill whose script and agent tests are green."""
+    config = settings()
+    model = agent.get("model") or config["model"]
+    return {
+        "skill": name,
+        "status": "green",
+        "hash": fingerprint,
+        "date": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "run_url": os.environ.get("RUN_URL", ""),
+        "commit": os.environ.get("COMMIT", ""),
+        "model": model,
+        "pi_version": config["pi"],
+        "script": {
+            "passed": script.get("passed", 0),
+            "failed": script.get("failed", 0),
+            "skipped": script.get("skipped", 0),
+        },
+        "agent": {
+            "tasks": len(agent.get("tasks", {})),
+            "passed": sum(1 for t in agent.get("tasks", {}).values() if t.get("passed")),
+            "runs": sum(t.get("runs", 0) for t in agent.get("tasks", {}).values()),
+        },
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    plan = sub.add_parser("plan")
+    plan.add_argument("--mode", choices=["diff", "schedule", "all"], required=True)
+    plan.add_argument("--base", default="")
+    plan.add_argument("--skills", default="")
+    plan.add_argument("--force", action="store_true")
+    plan.add_argument("--nightly", type=int, default=DEFAULT_NIGHTLY)
+    plan.add_argument("--ref", default=REF)
+    export = sub.add_parser("export")
+    export.add_argument("dir")
+    export.add_argument("--ref", default=REF)
+    push = sub.add_parser("push")
+    push.add_argument("green")
+    push.add_argument("--strict", action="store_true")
+    verified = sub.add_parser("verified")
+    verified.add_argument("skills", nargs="+")
+    verified.add_argument("--ref", default=REF)
+    args = parser.parse_args(argv)
+    return {
+        "plan": cmd_plan,
+        "export": cmd_export,
+        "push": cmd_push,
+        "verified": cmd_verified,
+    }[args.cmd](args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

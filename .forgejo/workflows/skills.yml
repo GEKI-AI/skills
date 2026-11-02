@@ -1,0 +1,221 @@
+name: Skills
+
+# Checks and tests of the skills. docs/testing.md explains the setup.
+#
+# - plan: which skills need a test run (changed files, fingerprint, test results).
+# - static: validator, lint, license check, secret scan, tests of the repo tooling.
+# - scripts: the script tests of the planned skills, against the mocks.
+# - agents: a vanilla Pi with a model runs the agent tasks of the planned skills.
+# - tests: the one check for branch protection. It sums up all jobs and saves the
+#   green results to the branch test-results.
+#
+# Secret GEKI_API_KEY: a key with the Models preset, a short expiry and a budget.
+# Variables (all optional): AGENT_TEST_MODEL, AGENT_TEST_BASE_URL, AGENT_JUDGE_MODEL,
+# NIGHTLY_SKILLS (default 10).
+# Secret RESULTS_TOKEN (optional): a token with write access to this repository, used
+# when the built-in token cannot push the branch test-results.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      skills:
+        description: "Skill names, comma-separated. Empty: all skills."
+        required: false
+        default: ""
+      force:
+        description: "Test even when a green result exists for the files."
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skills-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  AGENT_TEST_MODEL: ${{ vars.AGENT_TEST_MODEL }}
+  AGENT_TEST_BASE_URL: ${{ vars.AGENT_TEST_BASE_URL }}
+  AGENT_JUDGE_MODEL: ${{ vars.AGENT_JUDGE_MODEL }}
+  UV_PYTHON_INSTALL_DIR: ${{ github.workspace }}/.cache/uv-python
+
+jobs:
+  plan:
+    name: plan
+    runs-on: datenhof-ci
+    timeout-minutes: 10
+    outputs:
+      todo: ${{ steps.plan.outputs.todo }}
+      names: ${{ steps.plan.outputs.names }}
+      count: ${{ steps.plan.outputs.count }}
+      plan: ${{ steps.plan.outputs.plan }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tools
+        run: sh ci/setup.sh venv
+      - name: Which skills need a test run?
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+          INPUT_SKILLS: ${{ github.event.inputs.skills }}
+          INPUT_FORCE: ${{ github.event.inputs.force }}
+          NIGHTLY: ${{ vars.NIGHTLY_SKILLS }}
+        run: |
+          case "$EVENT" in
+            pull_request) python ci/results.py plan --mode diff --base "origin/$BASE_REF" ;;
+            push) python ci/results.py plan --mode diff --base "$BEFORE" ;;
+            schedule) python ci/results.py plan --mode schedule --nightly "${NIGHTLY:-10}" ;;
+            *)
+              force=""
+              if [ "$INPUT_FORCE" = "true" ]; then force="--force"; fi
+              python ci/results.py plan --mode all --skills "${INPUT_SKILLS:-}" $force
+              ;;
+          esac
+
+  static:
+    name: static
+    runs-on: datenhof-ci
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/pi
+            .cache/gitleaks
+          key: static-tools-${{ hashFiles('ci/pins.env') }}
+      - name: Tools
+        run: sh ci/setup.sh venv skills-ref pi gitleaks
+      - name: Metadata rules and layout
+        run: python ci/validate.py
+      - name: Agent Skills reference validator (skills-ref)
+        run: python ci/skills_ref_check.py
+      - name: README and catalog are generated
+        run: python ci/catalog.py --check
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: License check
+        run: |
+          packages="$(python ci/declared.py packages '*')"
+          if [ -n "$packages" ]; then uv pip install --quiet --python .cache/venv/bin/python $packages; fi
+          python ci/licenses.py --installed
+      - name: Version and changelog
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          base=""
+          if [ "$EVENT" = "pull_request" ]; then base="origin/$BASE_REF"; fi
+          if [ "$EVENT" = "push" ]; then base="$BEFORE"; fi
+          python ci/versions.py check --base "$base"
+      - name: Packages the GEKI image lacks
+        run: python ci/image_report.py
+      - name: Secret scan
+        run: gitleaks git --no-banner --redact --verbose
+      - name: Tests of the repo tooling, and Pi finds the skills
+        run: python -m pytest ci/tests -q -p no:cacheprovider
+
+  scripts:
+    name: scripts
+    needs: plan
+    if: ${{ needs.plan.outputs.count != '0' }}
+    runs-on: datenhof-ci
+    timeout-minutes: 30
+    outputs:
+      report: ${{ steps.run.outputs.report }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/prism
+            .cache/mocks
+            .cache/uv-python
+          key: scripts-tools-${{ hashFiles('ci/pins.env', 'ci/specs.json') }}
+      - name: Tools
+        run: sh ci/setup.sh venv prism
+      - name: Script tests on Python 3.11 with only the declared packages
+        id: run
+        env:
+          SKILLS: ${{ needs.plan.outputs.names }}
+        run: python ci/run_scripts.py --skills "$SKILLS" --env empty --report .cache/report/scripts.json
+
+  agents:
+    name: agents
+    needs: [plan, scripts]
+    if: ${{ needs.plan.outputs.count != '0' }}
+    runs-on: datenhof-ci
+    timeout-minutes: 60
+    outputs:
+      report: ${{ steps.run.outputs.report }}
+    steps:
+      - name: The model key is required
+        env:
+          KEY: ${{ secrets.GEKI_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::GEKI_API_KEY is not set. The agent tests cannot run, so nothing is verified. Pull requests from forks have no secrets: a maintainer moves the branch into this repository."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/pi
+            .cache/prism
+            .cache/mocks
+          key: agents-tools-${{ hashFiles('ci/pins.env', 'ci/specs.json') }}
+      - name: Tools
+        run: sh ci/setup.sh venv pi prism
+      - name: Agent tasks (up to three runs each, two passes needed)
+        id: run
+        env:
+          GEKI_API_KEY: ${{ secrets.GEKI_API_KEY }}
+          SKILLS: ${{ needs.plan.outputs.names }}
+        run: |
+          args=""
+          for name in $(echo "$SKILLS" | tr ',' ' '); do args="$args --skill $name"; done
+          python ci/agent_test.py $args --report .cache/report/agents.json
+
+  tests:
+    name: tests
+    needs: [plan, static, scripts, agents]
+    if: ${{ always() }}
+    runs-on: datenhof-ci
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
+      COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RESULTS_TOKEN || github.token }}
+      - name: Tools
+        run: sh ci/setup.sh venv
+      - name: Verdict
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: python ci/aggregate.py --green .cache/green.json
+      - name: Save the green results to the branch test-results
+        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        env:
+          STRICT: ${{ github.event_name == 'schedule' && '--strict' || '' }}
+        run: python ci/results.py push .cache/green.json $STRICT

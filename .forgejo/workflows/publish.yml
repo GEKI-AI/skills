@@ -1,0 +1,80 @@
+name: Publish
+
+# Publishes the skills to the GEKI catalog. It runs only
+#
+# - when a tag `publish-*` is pushed (for example publish-2026-11-03), or
+# - when started by hand on main.
+#
+# A merge to main publishes nothing. Protect the tag pattern `publish-*` in the
+# repository settings, so only maintainers can create it.
+#
+# Needs the repository variable PUBLISH_ENABLED=true and the secret GEKI_PUBLISH_KEY
+# (a key of the GEKI org). Without them the run fails, it is never silently green.
+# Optional variables: GEKI_API_URL (default https://api.geki.ai),
+# PUBLISH_REQUIRE_VERIFIED (default true; false skips the check for a green test
+# result). docs/publish.md has the details.
+
+on:
+  push:
+    tags: ["publish-*"]
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Skill names, comma-separated. Empty: all skills."
+        required: false
+        default: ""
+      dry_run:
+        description: "Only print what would be published."
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish
+    runs-on: datenhof-ci
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: The commit is on main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          case "$REF" in
+            refs/heads/main) ;;
+            refs/tags/publish-*)
+              git fetch --quiet origin main
+              if ! git merge-base --is-ancestor HEAD origin/main; then
+                echo "::error::The tag $REF is not on main. Nothing was published."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::Publish runs only for a tag publish-* or on main, not for $REF."
+              exit 1
+              ;;
+          esac
+      - name: Tools
+        run: sh ci/setup.sh venv
+      - name: Publish
+        env:
+          GEKI_PUBLISH_ENABLED: ${{ vars.PUBLISH_ENABLED == 'true' && '1' || '' }}
+          GEKI_PUBLISH_KEY: ${{ secrets.GEKI_PUBLISH_KEY }}
+          GEKI_API_URL: ${{ vars.GEKI_API_URL }}
+          REQUIRE_VERIFIED: ${{ vars.PUBLISH_REQUIRE_VERIFIED }}
+          ONLY: ${{ github.event.inputs.only }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          args=""
+          if [ "${REQUIRE_VERIFIED:-true}" != "false" ]; then args="$args --require-verified"; fi
+          if [ -n "${ONLY:-}" ]; then args="$args --only $ONLY"; fi
+          if [ "${DRY_RUN:-false}" = "true" ]; then args="$args --dry-run"; fi
+          python ci/publish.py $args

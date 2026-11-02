@@ -13,6 +13,7 @@ SKILLS = ROOT / "skills"
 TOOLS = ROOT / "tools"
 
 REPO_URL = "https://github.com/GEKI-AI/skills"
+PINS = ROOT / "ci" / "pins.env"
 
 TEST_ENV = {
     "confluence": lambda url: {
@@ -23,6 +24,16 @@ TEST_ENV = {
     "github": lambda url: {"GITHUB_BASE_URL": url, "GITHUB_TOKEN": "test-token"},
     "hubspot": lambda url: {"HUBSPOT_BASE_URL": url, "HUBSPOT_TOKEN": "test-token"},
 }
+
+
+def read_pins() -> dict[str, str]:
+    """Tool versions of CI from `ci/pins.env`. The workflows load the same file."""
+    out: dict[str, str] = {}
+    for line in PINS.read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key.strip() and not key.startswith("#"):
+            out[key.strip()] = value.strip()
+    return out
 
 
 def split_frontmatter(text: str) -> tuple[list[str], str] | None:

@@ -75,10 +75,11 @@ def prism_binary(work: Path) -> str:
     sys.exit("prism not found: npm install --prefix .cache/prism @stoplight/prism-cli@5.16.0")
 
 
-def start(tool: str, work: Path) -> None:
+def start(tool: str, work: Path) -> str:
+    """Start Prism for the specs of a tool. Returns the `MOCK_UPSTREAM_<TOOL>` value, empty without specs."""
     specs = json.loads((ROOT / "ci" / "specs.json").read_text(encoding="utf-8")).get(tool, [])
     if not specs:
-        return
+        return ""
     work.mkdir(parents=True, exist_ok=True)
     prism = prism_binary(work)
     upstreams: list[str] = []
@@ -110,7 +111,21 @@ def start(tool: str, work: Path) -> None:
     for port in ports:
         if not wait_for(port, 240):
             sys.exit(f"prism on port {port} did not start, see {work}/prism-*.log")
-    print(f"MOCK_UPSTREAM_{tool.upper()}={';'.join(upstreams)}")
+    return ";".join(upstreams)
+
+
+@contextlib.contextmanager
+def serve(tool: str, work: Path = ROOT / ".cache" / "mocks"):
+    """Prism mocks of a tool while the block runs. Sets `MOCK_UPSTREAM_<TOOL>` in the environment."""
+    name = f"MOCK_UPSTREAM_{tool.upper()}"
+    try:
+        value = start(tool, work)
+        if value:
+            os.environ[name] = value
+        yield value
+    finally:
+        os.environ.pop(name, None)
+        stop(work)
 
 
 def stop(work: Path) -> None:
@@ -130,7 +145,9 @@ def main() -> None:
     if args.action == "start":
         if not args.tool:
             parser.error("start needs a tool")
-        start(args.tool, args.work)
+        value = start(args.tool, args.work)
+        if value:
+            print(f"MOCK_UPSTREAM_{args.tool.upper()}={value}")
     else:
         stop(args.work)
 

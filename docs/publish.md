@@ -1,22 +1,35 @@
 # Publishing to the GEKI catalog
 
-A merge to `main` starts the workflow `publish.yml`. It finds the skills whose `metadata.version` is higher than before the merge, or that are new. Then a job in the GitHub environment `publish` runs `ci/publish.py`. The environment needs approval by a reviewer before every run.
+Publishing is a tag. Push a tag that starts with `publish-` on a commit of `main`, for example `publish-2026-11-03`. The workflow `publish.yml` then runs `ci/publish.py`. A merge to `main` publishes nothing. You can also start the workflow by hand on `main`. Its inputs are `only` (skill names) and `dry_run`.
 
-For each skill the script builds a zip with the folder `<name>/` (without `tests/`) plus `assets/logo.svg` from `tools/<tool>/`, and calls the GEKI API with the key `GEKI_PUBLISH_KEY`:
+Protect the tag pattern `publish-*` in the repository settings, so only maintainers can create it. The tag is the approval.
 
-- the skill is not in the GEKI org yet: `POST /v1/skills` with the zip, `description`, `tags` and `shared_with=all`.
-- it exists: `POST /v1/skills/{id}` with `mode=new_version`. It never sends `overwrite`, so a shared version is never replaced.
-- the platform already has a version number equal to or higher than the repo `version`: skip. This makes a re-run safe.
+## Needs
 
-Nothing is sent unless the repository variable `PUBLISH_ENABLED` is `true` and the key exists. Otherwise the job is skipped or prints a dry run.
+- The repository variable `PUBLISH_ENABLED` is `true`.
+- The repository secret `GEKI_PUBLISH_KEY` is a key of the GEKI org (`GEKI_PLATFORM_ORG_ID`). Only such a key may set `shared_with`. Other keys get `403 staff_only`.
+- Optional variable `GEKI_API_URL` (default `https://api.geki.ai`).
+- Unless the variable `PUBLISH_REQUIRE_VERIFIED` is `false`, every skill must have a green test result for its current files on the branch `test-results` (see [testing.md](testing.md)). Otherwise nothing is published.
 
-## Assumptions about the API
+Without `PUBLISH_ENABLED` or the key, the run fails with a message. It is never silently green. Only `dry_run` works without them.
 
-The shared-skills API of geki-api is in development. The script assumes:
+## What it does
 
-- `GET /v1/skills?scope=own&q=<name>&limit=100` returns `{"data": [...]}` with rows that have `id`, `name` and the current `version` (or `current_version`).
-- `POST /v1/skills` takes the multipart fields `files` (the zip), `name`, `description`, `tags` (a JSON list) and `shared_with` (`none` or `all`). Only a staff or system key may set `all`.
-- `POST /v1/skills/{id}` takes `mode=new_version`, `files`, `description` and `tags`.
-- The key may write only skills of the GEKI org.
+For each skill the script builds a zip with the folder `<name>/` (without `tests/`) plus `assets/logo.svg` from `tools/<tool>/`, and calls the GEKI API:
 
-Change `ci/publish.py` and its tests when the API differs.
+- The skill is not in the GEKI org yet: `POST /v1/skills` with the zip, `description`, `tags` and `shared_with=all`.
+- It exists: `POST /v1/skills/{id}` with `mode=new_version`. It never sends `overwrite`, so a shared version is never replaced. If the skill is not shared with `all`, the call also sets `shared_with=all`.
+- The platform already has `current_version` equal to or higher than the repo `metadata.version`: skip. A second run does nothing.
+
+So a tag publishes every skill whose version the platform does not have yet. There is no base commit to choose.
+
+## The API
+
+The API is described in `services/geki-api/docs/skills.md` in geki-core, section Shared skills. The script uses:
+
+- `GET /v1/skills?scope=own&q=<name>&limit=100`, with `after=<last_id>` while `has_more` is true. Rows have `id`, `name`, `current_version` and `shared_with`. The script matches the exact name.
+- `POST /v1/skills` with the multipart fields `files` (the zip), `name`, `description`, `tags` (a JSON list) and `shared_with`.
+- `POST /v1/skills/{id}` with `mode=new_version`, `files`, `description` and `tags`.
+- The zip keeps one folder `<name>/` with `SKILL.md`. geki-api rewrites the frontmatter only when `name` or `description` is missing.
+
+Change `ci/publish.py` and its tests when the API changes.
