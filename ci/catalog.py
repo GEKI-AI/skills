@@ -137,7 +137,7 @@ def tests_block(skill: Skill) -> str:
         [
             f"- {tests} script tests (pytest) run against {mock}, on Python 3.11 with only the declared packages.",
             f"- {tasks} agent tasks: a vanilla Pi with a model runs each task against the mock, three times. A task passes with two of three runs, judged by the requests the mock saw.",
-            "- A weekly read-only run against a real account finds drift between the real API and the fixtures.",
+            "- A read-only run against a real account can be started by hand. It finds drift between the real API and the fixtures.",
             "",
             f"[![CI]({REPO_URL}/actions/workflows/ci.yml/badge.svg)]({REPO_URL}/actions/workflows/ci.yml)",
         ]

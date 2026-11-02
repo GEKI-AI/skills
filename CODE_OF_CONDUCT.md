@@ -13,6 +13,6 @@ Not acceptable: harassment, insults, discrimination, personal attacks, publishin
 
 ## Enforcement
 
-Maintainers may edit or remove comments, close issues and pull requests, and block people who do not follow this code. Report a problem to conduct@geki.ai. We keep reports private and handle them fairly.
+Maintainers may edit or remove comments, close issues and pull requests, and block people who do not follow this code. Report a problem to security@geki.ai. We keep reports private and handle them fairly.
 
 This code applies in the project's spaces on GitHub and when someone represents the project in public. It is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.1.

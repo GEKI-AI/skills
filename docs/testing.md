@@ -6,7 +6,7 @@
 
 For tools with a vendor OpenAPI spec, the mock first passes each request to a [Prism](https://github.com/stoplightio/prism) mock built from that spec. Prism rejects a request that does not match the spec, and the test fails with the reason. When Prism accepts the request, the answer comes from the fixture, so the script sees realistic data. The specs are listed with pinned URLs in `ci/specs.json`. `ci/mocks.py start <tool>` downloads them, starts Prism and prints `MOCK_UPSTREAM_<TOOL>=...`. Export that line before `pytest`.
 
-Prism checks the request against the spec, not against the real service. A spec can be stricter or looser than the real API. Examples we met: the HubSpot search spec requires `after` and `sorts`, and the Confluence v2 spec lists a page body as `oneOf` two schemas that both match. `ci/specs.json` has a `fixups` field for the rare cases where the spec is wrong. The weekly real-API run finds the rest.
+Prism checks the request against the spec, not against the real service. A spec can be stricter or looser than the real API. Examples we met: the HubSpot search spec requires `after` and `sorts`, and the Confluence v2 spec lists a page body as `oneOf` two schemas that both match. `ci/specs.json` has a `fixups` field for the rare cases where the spec is wrong. A real-API run, started by hand, finds the rest.
 
 Tools without a spec (Zammad) use the fixtures only.
 

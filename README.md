@@ -104,7 +104,7 @@ Do not paste tokens into the chat with the agent.
 - **Static checks** on every pull request: the Agent Skills reference validator (`skills-ref`), a check of the metadata rules, a secret scan, lint, a license check, and a check that a changed skill has a higher `version` and a changelog entry.
 - **Script tests** with pytest against a mock. Where the vendor publishes an OpenAPI spec, the mock is [Prism](https://github.com/stoplightio/prism) built from that spec, which rejects requests that do not match it. For Zammad the mock is a small server with fixtures. The tests run on `python:3.11-slim` with only the packages the skill declares.
 - **Agent tests**: a vanilla Pi with a model runs each task in `tests/tasks/` against the mock, three times. A task passes with two of three runs. The check reads the requests the mock logged: the right calls with the right fields on writes, and no forbidden calls.
-- **Weekly real-API run**, read only, against test accounts. It finds drift between the real API and the fixtures.
+- **Real-API run**, read only, against test accounts, started by hand. It finds drift between the real API and the fixtures.
 
 How to run them locally is in [CONTRIBUTING.md](CONTRIBUTING.md).
 

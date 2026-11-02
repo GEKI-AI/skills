@@ -64,7 +64,7 @@ Scoped API tokens use another address (`api.atlassian.com`) and are not supporte
 <!-- generated:tests -->
 - 12 script tests (pytest) run against a Prism mock built from the vendor OpenAPI spec, which also rejects requests that do not match the spec, on Python 3.11 with only the declared packages.
 - 2 agent tasks: a vanilla Pi with a model runs each task against the mock, three times. A task passes with two of three runs, judged by the requests the mock saw.
-- A weekly read-only run against a real account finds drift between the real API and the fixtures.
+- A read-only run against a real account can be started by hand. It finds drift between the real API and the fixtures.
 
 [![CI](https://github.com/GEKI-AI/skills/actions/workflows/ci.yml/badge.svg)](https://github.com/GEKI-AI/skills/actions/workflows/ci.yml)
 <!-- /generated:tests -->
