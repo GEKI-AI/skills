@@ -91,6 +91,15 @@ def test_zip_has_one_folder_logo_and_no_tests():
     assert publish.build_zip(skill) == publish.build_zip(skill)
 
 
+def test_zipped_skill_md_names_the_tool_and_the_test_date():
+    skill = next(s for s in load_skills() if s.name == "github")
+    archive = zipfile.ZipFile(io.BytesIO(publish.build_zip(skill, "2026-11-02T03:17:00Z")))
+    text = archive.read("github/SKILL.md").decode("utf-8")
+    added = '  geki-tool-name: "GitHub"\n  geki-tested: "2026-11-02"\n'
+    assert added in text
+    assert text.replace(added, "") == skill.text
+
+
 class FakeApi:
     def __init__(self, rows, page=100):
         self.rows = rows
@@ -226,9 +235,13 @@ def test_publish_without_a_key_fails_loudly(monkeypatch, capsys):
 def test_publish_stops_before_sending_when_a_skill_is_not_verified(monkeypatch, capsys):
     monkeypatch.setenv("GEKI_PUBLISH_ENABLED", "1")
     monkeypatch.setenv("GEKI_PUBLISH_KEY", "key")
-    monkeypatch.setattr(publish, "unverified", lambda skills, ref: ["hubspot"])
+    monkeypatch.setattr(
+        publish,
+        "tested_dates",
+        lambda skills, ref: {s.name: "2026-11-02" for s in skills if s.name != "hubspot"},
+    )
     sent = []
-    monkeypatch.setattr(publish, "publish_one", lambda api, skill: sent.append(skill.name))
+    monkeypatch.setattr(publish, "publish_one", lambda api, skill, tested: sent.append(skill.name))
     monkeypatch.setattr(sys, "argv", ["publish.py", "--require-verified"])
     assert publish.main() == 1
     assert sent == []

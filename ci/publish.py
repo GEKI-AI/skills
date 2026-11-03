@@ -13,7 +13,9 @@ For every skill this builds a zip and compares the repo `metadata.version` with 
 - the platform has the same or a higher version: skipped. A second run does nothing.
 
 The zip has one folder `<name>/` with the skill files, without `tests/`, plus
-`assets/logo.svg` from `tools/<tool>/`.
+`assets/logo.svg` from `tools/<tool>/`. Its `SKILL.md` gets `geki-tool-name` from
+`tools/<tool>/tool.yaml` and `geki-tested` (the date of the green result) in `metadata`.
+The repo files stay as they are.
 
 The script sends nothing unless `GEKI_PUBLISH_ENABLED=1` and `GEKI_PUBLISH_KEY` are
 set, and it fails when they are not (`--dry-run` only prints). With
@@ -38,13 +40,36 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from common import TOOLS, Skill
+from common import TOOLS, Skill, load_tool
 from versions import evaluate
 
 EXCLUDED_DIRS = {"tests", "__pycache__", ".pytest_cache"}
 
 
-def build_zip(skill: Skill) -> bytes:
+def with_metadata(text: str, values: dict[str, str]) -> str:
+    """`text` with each value set under the top-level `metadata:` map of the frontmatter."""
+    lines = text.split("\n")
+    start = next((i for i, line in enumerate(lines) if line.rstrip() == "metadata:"), None)
+    if start is None:
+        return text
+    end = start + 1
+    while end < len(lines) and lines[end][:1].isspace():
+        end += 1
+    indent = "  "
+    if end > start + 1:
+        first = lines[start + 1]
+        indent = first[: len(first) - len(first.lstrip())]
+    keep = [line for line in lines[start + 1 : end] if line.split(":", 1)[0].strip() not in values]
+    added = [f"{indent}{key}: {json.dumps(value)}" for key, value in values.items() if value]
+    return "\n".join(lines[: start + 1] + keep + added + lines[end:])
+
+
+def zip_metadata(skill: Skill, tested: str = "") -> dict[str, str]:
+    name = load_tool(skill.tool).get("name") if skill.tool else ""
+    return {"geki-tool-name": str(name or ""), "geki-tested": tested[:10]}
+
+
+def build_zip(skill: Skill, tested: str = "") -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         files = sorted(
@@ -62,7 +87,11 @@ def build_zip(skill: Skill) -> bytes:
             info = zipfile.ZipInfo(arcname, date_time=(1980, 1, 1, 0, 0, 0))
             info.external_attr = (0o755 if os.access(path, os.X_OK) else 0o644) << 16
             info.compress_type = zipfile.ZIP_DEFLATED
-            archive.writestr(info, path.read_bytes())
+            data = path.read_bytes()
+            if arcname == f"{skill.name}/SKILL.md":
+                text = with_metadata(data.decode("utf-8"), zip_metadata(skill, tested))
+                data = text.encode("utf-8")
+            archive.writestr(info, data)
     return buffer.getvalue()
 
 
@@ -133,8 +162,8 @@ def tags_for(skill: Skill) -> str:
     return json.dumps([t for t in (skill.tool, skill.get("geki-category")) if t])
 
 
-def publish_one(api: Api | None, skill: Skill) -> str:
-    data = build_zip(skill)
+def publish_one(api: Api | None, skill: Skill, tested: str = "") -> str:
+    data = build_zip(skill, tested)
     existing = api.find(skill.name) if api else None
     if existing is None:
         action = "create and share with all"
@@ -159,14 +188,19 @@ def publish_one(api: Api | None, skill: Skill) -> str:
     return f"{skill.name}@{skill.version}: {action}"
 
 
-def unverified(skills: list[Skill], ref: str) -> list[str]:
+def tested_dates(skills: list[Skill], ref: str) -> dict[str, str]:
+    """The date of the green result for the current files, per verified skill."""
     from fingerprint import hashes
     from results import fetch_results, is_verified, load_ref
 
     fetch_results()
     results = load_ref(ref)
     current = hashes(skills)
-    return [s.name for s in skills if not is_verified(s.name, current, results)]
+    return {
+        s.name: str(results[s.name].get("date", ""))[:10]
+        for s in skills
+        if is_verified(s.name, current, results)
+    }
 
 
 def main() -> int:
@@ -184,6 +218,7 @@ def main() -> int:
         wanted = set(args.only.split(","))
         selected = [s for s in selected if s.name in wanted]
     api = None
+    tested: dict[str, str] = {}
     if not args.dry_run:
         if os.environ.get("GEKI_PUBLISH_ENABLED") != "1":
             print("publishing is not enabled: set the variable PUBLISH_ENABLED to true")
@@ -196,7 +231,8 @@ def main() -> int:
             os.environ["GEKI_PUBLISH_KEY"],
         )
         if args.require_verified:
-            missing = unverified(selected, args.results_ref)
+            tested = tested_dates(selected, args.results_ref)
+            missing = [s.name for s in selected if s.name not in tested]
             if missing:
                 print(
                     "no green test result for the current files of: "
@@ -209,8 +245,10 @@ def main() -> int:
     for skill in selected:
         if args.out:
             args.out.mkdir(parents=True, exist_ok=True)
-            (args.out / f"{skill.name}.zip").write_bytes(build_zip(skill))
-        print(publish_one(api, skill))
+            (args.out / f"{skill.name}.zip").write_bytes(
+                build_zip(skill, tested.get(skill.name, ""))
+            )
+        print(publish_one(api, skill, tested.get(skill.name, "")))
     return 0
 
 
