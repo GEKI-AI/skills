@@ -34,6 +34,7 @@ A new skill copies the folder layout of an existing one, adds its variables to `
 
 - Secrets come only from environment variables and go only into request headers. Never into a URL, a file, a log, or an error message.
 - No real tokens, hosts of customers, or personal data in fixtures. Use `example.com` hosts and made-up data.
+- No names of real companies or people in skills, fixtures, tests, or examples: no customer, partner, employer, or person. The tool and its vendor are fine. No check finds names, so leave them out before you commit. The reviewer checks every name in the PR.
 - Facts about a product's API come from the vendor documentation or its spec. Do not invent endpoints or fields.
 - `metadata` must stay readable by a vanilla Pi and by geki-api. `ci/validate.py` follows the parser in geki-api. Change both together.
 - Skills that need GEKI features (workspace files, Knowledge Bases, chat cards) do not belong here.

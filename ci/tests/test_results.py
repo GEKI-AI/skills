@@ -54,23 +54,6 @@ def test_a_failed_or_missing_status_is_not_verified():
     assert plan.todo == ["a"]
 
 
-def test_schedule_takes_unverified_plus_the_oldest_verified():
-    plan = results.select(NAMES, HASH, STORED, mode="schedule", nightly=1)
-    assert plan.todo == ["b", "c", "d"]
-    assert plan.reasons["b"] == "refresh, oldest verification"
-    assert plan.left_out == {"a": "verified recently, not due"}
-
-
-def test_schedule_with_zero_refreshes_tests_only_unverified():
-    plan = results.select(NAMES, HASH, STORED, mode="schedule", nightly=0)
-    assert plan.todo == ["c", "d"]
-
-
-def test_schedule_ignores_the_candidates():
-    plan = results.select(NAMES, HASH, STORED, mode="schedule", candidates=[], nightly=10)
-    assert plan.todo == ["a", "b", "c", "d"]
-
-
 def test_all_skips_verified_unless_forced():
     plan = results.select(NAMES, HASH, STORED, mode="all")
     assert plan.todo == ["c", "d"]
@@ -112,11 +95,10 @@ def remote(tmp_path, monkeypatch):
     return clone
 
 
-def run_push(tmp_path, records, strict=False):
+def run_push(tmp_path, records):
     path = tmp_path / "green.json"
     path.write_text(json.dumps(records), encoding="utf-8")
-    argv = ["push", str(path)] + (["--strict"] if strict else [])
-    return results.main(argv)
+    return results.main(["push", str(path)])
 
 
 def test_push_creates_the_branch_and_later_pushes_keep_other_skills(remote, tmp_path):
@@ -140,12 +122,10 @@ def test_push_of_the_same_result_changes_nothing(remote, tmp_path, capsys):
     assert "nothing to save" in capsys.readouterr().out
 
 
-def test_push_failure_is_a_warning_and_an_error_with_strict(remote, tmp_path, capsys):
+def test_push_failure_is_a_warning(remote, tmp_path, capsys):
     results.git("remote", "set-url", "origin", str(tmp_path / "missing.git"))
     assert run_push(tmp_path, [STORED["a"]]) == 0
     assert "::warning::" in capsys.readouterr().out
-    assert run_push(tmp_path, [STORED["a"]], strict=True) == 1
-    assert "::error::" in capsys.readouterr().out
 
 
 def test_push_works_again_after_a_failed_push(remote, tmp_path):
@@ -153,7 +133,7 @@ def test_push_works_again_after_a_failed_push(remote, tmp_path):
     results.git("remote", "set-url", "origin", str(tmp_path / "missing.git"))
     assert run_push(tmp_path, [STORED["a"]]) == 0
     results.git("remote", "set-url", "origin", good)
-    assert run_push(tmp_path, [STORED["a"]], strict=True) == 0
+    assert run_push(tmp_path, [STORED["a"]]) == 0
     assert list(results.load_ref(results.REF)) == ["a"]
 
 

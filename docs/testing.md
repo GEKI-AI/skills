@@ -50,11 +50,11 @@ python ci/catalog.py --results .cache/results
 
 Commit the changed READMEs in a normal pull request. CI cannot push to `main`.
 
-CI pushes the branch with the built-in token (`contents: write`). If Forgejo does not allow that for a run, add the secret `RESULTS_TOKEN` (a token of a CI user with write access to this repository). When a push fails, CI prints a warning and the next run tests the skill again. The nightly run fails in that case, so someone notices.
+CI pushes the branch with the built-in token (`contents: write`). If Forgejo does not allow that for a run, add the secret `RESULTS_TOKEN` (a token of a CI user with write access to this repository). When a push fails, CI prints a warning and the next run tests the skill again.
 
-## Nightly run
+## No nightly run
 
-The schedule tests every skill without a green result for its fingerprint, plus the `N` skills whose last verification is oldest. `N` is the repository variable `NIGHTLY_SKILLS` (default 10). A skill that fails in the nightly refresh keeps its old result and is picked again the next night.
+There is no schedule. A green result stays valid while its fingerprint stays the same: the mocks do not change, and everything else a result depends on is in the fingerprint. Drift of the real APIs is found by the `Real API` workflow, started by hand.
 
 ## By hand
 
@@ -66,7 +66,7 @@ On GitHub only the mirror exists, so there are no pull requests from forks on Fo
 
 ## Setup on Forgejo
 
-Secrets: `GEKI_API_KEY` (a key with the Models preset, a short expiry and a budget). Optional: `RESULTS_TOKEN`. Variables, all optional: `AGENT_TEST_MODEL`, `AGENT_TEST_BASE_URL`, `AGENT_JUDGE_MODEL`, `NIGHTLY_SKILLS`. Branch protection on `main` requires the check `Skills / tests (pull_request)`.
+Secrets: `GEKI_API_KEY` (a key with the Models preset, a short expiry and a budget). Optional: `RESULTS_TOKEN`. Variables, all optional: `AGENT_TEST_MODEL`, `AGENT_TEST_BASE_URL`, `AGENT_JUDGE_MODEL`. Branch protection on `main` requires the check `Skills / tests (pull_request)`.
 
 The runner label is `datenhof-ci`. It has Python, uv, Node and Docker. `ci/setup.sh` adds only what the repo needs (Pi, Prism, gitleaks, `skills-ref`) and the workflows cache it. The versions are in `ci/pins.env`.
 

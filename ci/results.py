@@ -5,16 +5,15 @@ green result: the fingerprint (`ci/fingerprint.py`), the date, the run, the mode
 and the pass counts. A skill whose current fingerprint has a green result is
 "already verified" and is not tested again.
 
-    python ci/results.py plan --mode diff|schedule|all [--base REF] [--skills a,b]
-                              [--force] [--nightly N] [--ref origin/test-results]
+    python ci/results.py plan --mode diff|all [--base REF] [--skills a,b]
+                              [--force] [--ref origin/test-results]
     python ci/results.py export DIR [--ref origin/test-results]
-    python ci/results.py push GREEN_JSON [--strict]
+    python ci/results.py push GREEN_JSON
     python ci/results.py verified SKILL [SKILL ...] [--ref origin/test-results]
 
 `plan` prints the plan as JSON and writes `todo`, `count` and `plan` to
 `$GITHUB_OUTPUT`. `push` commits the results of GREEN_JSON (a list of result
-records) and pushes them. A failed push is a warning, and an error with
-`--strict`.
+records) and pushes them. A failed push is a warning.
 """
 
 from __future__ import annotations
@@ -36,7 +35,6 @@ from fingerprint import hashes, settings
 BRANCH = "test-results"
 REF = f"origin/{BRANCH}"
 WORK = ROOT / ".cache" / "results"
-DEFAULT_NIGHTLY = 10
 COMMITTER = ["-c", "user.name=geki-skills CI", "-c", "user.email=noreply@geki.ai"]
 
 
@@ -117,18 +115,15 @@ def select(
     *,
     mode: str,
     candidates: list[str] | None = None,
-    nightly: int = DEFAULT_NIGHTLY,
     force: bool = False,
 ) -> Plan:
     """Which skills need a test run.
 
     `diff`: the candidates (the affected skills) without a green result for their fingerprint.
-    `schedule`: every skill without one, plus the `nightly` verified skills with the oldest date.
     `all`: the candidates (all skills by default), without a green result unless `force`.
     """
     plan = Plan()
-    wanted = set(names if candidates is None or mode == "schedule" else candidates)
-    verified_pool: list[str] = []
+    wanted = set(names if candidates is None else candidates)
     for name in names:
         if name not in wanted:
             plan.left_out[name] = "not affected by the change"
@@ -137,21 +132,11 @@ def select(
             plan.reasons[name] = "forced"
         elif is_verified(name, current, results):
             plan.verified[name] = results[name]
-            verified_pool.append(name)
         else:
             plan.todo.append(name)
             plan.reasons[name] = (
                 "no green result for this fingerprint" if name in results else "never verified"
             )
-    if mode == "schedule":
-        oldest = sorted(verified_pool, key=lambda n: str(results[n].get("date", "")))
-        for name in oldest[: max(nightly, 0)]:
-            plan.todo.append(name)
-            plan.reasons[name] = "refresh, oldest verification"
-            del plan.verified[name]
-        for name in oldest[max(nightly, 0) :]:
-            plan.left_out[name] = "verified recently, not due"
-            del plan.verified[name]
     plan.todo.sort()
     plan.fingerprints = {name: current[name] for name in plan.todo}
     return plan
@@ -191,7 +176,6 @@ def cmd_plan(args: argparse.Namespace) -> int:
         results,
         mode=args.mode,
         candidates=candidates,
-        nightly=args.nightly,
         force=args.force,
     )
     print(json.dumps(plan.as_json(), indent=2))
@@ -303,12 +287,11 @@ def cmd_push(args: argparse.Namespace) -> int:
         except RuntimeError as exc:
             error = str(exc)
             print(f"results: attempt {attempt} failed: {error}", file=sys.stderr)
-    level = "error" if args.strict else "warning"
     print(
-        f"::{level}::the test results could not be saved to the branch {BRANCH}. "
+        f"::warning::the test results could not be saved to the branch {BRANCH}. "
         f"The next run tests these skills again. {error}"
     )
-    return 1 if args.strict else 0
+    return 0
 
 
 def record_for(name: str, fingerprint: str, script: dict, agent: dict) -> dict:
@@ -341,18 +324,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
     plan = sub.add_parser("plan")
-    plan.add_argument("--mode", choices=["diff", "schedule", "all"], required=True)
+    plan.add_argument("--mode", choices=["diff", "all"], required=True)
     plan.add_argument("--base", default="")
     plan.add_argument("--skills", default="")
     plan.add_argument("--force", action="store_true")
-    plan.add_argument("--nightly", type=int, default=DEFAULT_NIGHTLY)
     plan.add_argument("--ref", default=REF)
     export = sub.add_parser("export")
     export.add_argument("dir")
     export.add_argument("--ref", default=REF)
     push = sub.add_parser("push")
     push.add_argument("green")
-    push.add_argument("--strict", action="store_true")
     verified = sub.add_parser("verified")
     verified.add_argument("skills", nargs="+")
     verified.add_argument("--ref", default=REF)
