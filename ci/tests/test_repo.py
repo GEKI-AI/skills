@@ -199,7 +199,9 @@ def test_publish_creates_a_new_shared_skill():
 
 def test_publish_adds_a_version_and_never_overwrites():
     skill = next(s for s in load_skills() if s.name == "hubspot")
-    api = FakeApi([{"id": "sk_1", "name": "hubspot", "current_version": 0, "shared_with": "all"}])
+    api = FakeApi(
+        [{"id": "sk_1", "name": "hubspot", "meta": {"version": None}, "shared_with": "all"}]
+    )
     try:
         message = publish.publish_one(publish.Api(api.url, "key-1"), skill)
     finally:
@@ -214,7 +216,7 @@ def test_publish_adds_a_version_and_never_overwrites():
 
 def test_publish_skips_a_version_the_platform_has():
     skill = next(s for s in load_skills() if s.name == "hubspot")
-    api = FakeApi([{"id": "sk_1", "name": "hubspot", "current_version": skill.version}])
+    api = FakeApi([{"id": "sk_1", "name": "hubspot", "meta": {"version": skill.version}}])
     try:
         message = publish.publish_one(publish.Api(api.url, "key-1"), skill)
     finally:
@@ -225,7 +227,9 @@ def test_publish_skips_a_version_the_platform_has():
 
 def test_publish_shares_a_skill_that_exists_but_is_not_shared():
     skill = next(s for s in load_skills() if s.name == "hubspot")
-    api = FakeApi([{"id": "sk_1", "name": "hubspot", "current_version": 0, "shared_with": "none"}])
+    api = FakeApi(
+        [{"id": "sk_1", "name": "hubspot", "meta": {"version": None}, "shared_with": "none"}]
+    )
     try:
         publish.publish_one(publish.Api(api.url, "key-1"), skill)
     finally:
@@ -235,8 +239,8 @@ def test_publish_shares_a_skill_that_exists_but_is_not_shared():
 
 def test_publish_finds_the_skill_on_a_later_page():
     skill = next(s for s in load_skills() if s.name == "hubspot")
-    rows = [{"id": f"sk_{i}", "name": f"other-{i}", "current_version": 1} for i in range(5)]
-    rows.append({"id": "sk_h", "name": "hubspot", "current_version": skill.version})
+    rows = [{"id": f"sk_{i}", "name": f"other-{i}", "meta": {"version": 1}} for i in range(5)]
+    rows.append({"id": "sk_h", "name": "hubspot", "meta": {"version": skill.version}})
     api = FakeApi(rows, page=2)
     try:
         message = publish.publish_one(publish.Api(api.url, "key-1"), skill)

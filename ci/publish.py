@@ -3,10 +3,10 @@
     python ci/publish.py [--base COMMIT] [--only a,b] [--require-verified] [--dry-run]
 
 For every skill this builds a zip and compares the repo `metadata.version` with the
-`current_version` the platform has. Without `--base` that is every skill. With
+`meta.version` of the current version on the platform. Without `--base` that is every skill. With
 `--base`, only skills that are new or have a higher version than at that commit.
 
-- the skill does not exist yet in the GEKI org: `POST /v1/skills`, with
+- the skill does not exist yet in the platform org: `POST /v1/skills`, with
   `shared_with=all` so every org sees it in the catalog.
 - it exists: `POST /v1/skills/{id}` with `mode=new_version`. It never uses
   `overwrite`, so a shared version is never replaced.
@@ -134,7 +134,7 @@ class Api:
             detail = exc.read().decode("utf-8", "replace")[:500]
             hint = ""
             if exc.code == 403 and "staff_only" in detail:
-                hint = " (only a key of the GEKI org may set shared_with)"
+                hint = " (only a key of the platform org may set shared_with)"
             raise SystemExit(f"{method} {path}: {exc.code} {detail}{hint}") from exc
 
     def find(self, name: str) -> dict | None:
@@ -163,7 +163,7 @@ def publish_one(api: Api | None, skill: Skill, tested: str = "") -> str:
     if existing is None:
         action = "create and share with all"
     else:
-        current = existing.get("current_version") or existing.get("version") or 0
+        current = (existing.get("meta") or {}).get("version") or 0
         if int(current) >= skill.version:
             return f"{skill.name}: platform has version {current}, repo has {skill.version}, skip"
         action = f"new_version after {current}"
@@ -219,7 +219,7 @@ def main() -> int:
             print("publishing is not enabled: set the variable PUBLISH_ENABLED to true")
             return 1
         if not os.environ.get("GEKI_PUBLISH_KEY"):
-            print("GEKI_PUBLISH_KEY is not set: add the secret of a key of the GEKI org")
+            print("GEKI_PUBLISH_KEY is not set: add the secret of a key of the platform org")
             return 1
         api = Api(
             os.environ.get("GEKI_API_URL") or "https://api.geki.ai",

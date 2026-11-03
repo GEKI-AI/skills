@@ -9,7 +9,7 @@ name: Publish
 # repository settings, so only maintainers can create it.
 #
 # Needs the repository variable PUBLISH_ENABLED=true and the secret GEKI_PUBLISH_KEY
-# (a key of the GEKI org). Without them the run fails, it is never silently green.
+# (a key of the platform org). Without them the run fails, it is never silently green.
 # Optional variables: GEKI_API_URL (default https://api.geki.ai),
 # PUBLISH_REQUIRE_VERIFIED (default true; false skips the check for a green test
 # result). docs/publish.md has the details.
