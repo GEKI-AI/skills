@@ -13,12 +13,11 @@ them from the branch `test-results`). Without `--results` they stay as they are.
 
 from __future__ import annotations
 
-import json
 import re
 import sys
 from pathlib import Path
 
-from common import REPO_URL, ROOT, Skill, load_skills
+from common import REPO_URL, ROOT, Skill, load_skills, specs_for
 from results import load_dir
 
 
@@ -51,7 +50,7 @@ CATEGORY_TITLES = {
     "knowledge": "Knowledge",
     "tickets": "Tickets",
     "crm": "CRM",
-    "dev": "Developer tools",
+    "dev": "Development",
     "chat": "Chat",
     "files": "Files",
     "finance": "Finance",
@@ -124,10 +123,9 @@ def setup_block(skill: Skill) -> str:
 
 
 def tests_block(skill: Skill) -> str:
-    specs = json.loads((ROOT / "ci" / "specs.json").read_text(encoding="utf-8")).get(skill.tool, [])
     mock = (
         "a Prism mock built from the vendor OpenAPI spec, which also rejects requests that do not match the spec"
-        if specs
+        if specs_for(skill.name)
         else "a small mock with fixtures"
     )
     tests = sum(

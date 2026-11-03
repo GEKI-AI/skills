@@ -4,8 +4,8 @@ description: Create and update pages in Confluence Cloud and add comments. Write
 license: Apache-2.0
 compatibility: Python 3.11+, access to your Confluence Cloud site over HTTPS
 metadata:
-  version: "1"
-  geki-tool: confluence
+  version: "2"
+  geki-tags: confluence, wiki, atlassian
   geki-category: knowledge
   geki-access: write
   geki-auth: company, person-token

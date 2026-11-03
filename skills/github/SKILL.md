@@ -4,8 +4,8 @@ description: Work with GitHub issues, pull requests, comments and files. List an
 license: Apache-2.0
 compatibility: Python 3.11+, access to api.github.com over HTTPS
 metadata:
-  version: "1"
-  geki-tool: github
+  version: "2"
+  geki-tags: github, issues, pull-requests
   geki-category: dev
   geki-access: read, write
   geki-auth: company, person-token

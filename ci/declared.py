@@ -1,12 +1,11 @@
-"""Print facts about the skills of one tool for the workflows.
+"""Print facts about skills for the workflows.
 
-    python ci/declared.py names TOOL      skill names
-    python ci/declared.py paths TOOL      skill folders
-    python ci/declared.py packages TOOL   declared Python packages
-    python ci/declared.py env TOOL        variable names (secrets and settings)
-    python ci/declared.py tools           tool ids
+    python ci/declared.py names [SKILL ...]      skill names
+    python ci/declared.py paths [SKILL ...]      skill folders
+    python ci/declared.py packages [SKILL ...]   declared Python packages
+    python ci/declared.py env [SKILL ...]        variable names (secrets and settings)
 
-TOOL `*` means all tools.
+Without skill names, or with `*`, all skills.
 """
 
 from __future__ import annotations
@@ -20,12 +19,8 @@ def main(argv: list[str]) -> int:
     if len(argv) < 1:
         print(__doc__)
         return 2
-    skills = load_skills()
-    if argv[0] == "tools":
-        print("\n".join(sorted({s.tool for s in skills})))
-        return 0
-    tool = argv[1]
-    chosen = [s for s in skills if tool in ("*", s.tool)]
+    wanted = {name for name in argv[1:] if name != "*"}
+    chosen = [s for s in load_skills() if not wanted or s.name in wanted]
     if argv[0] == "names":
         out = [s.name for s in chosen]
     elif argv[0] == "paths":

@@ -1,11 +1,12 @@
-"""Start and stop the Prism mocks of one tool.
+"""Start and stop the Prism mocks of one skill.
 
-    python ci/mocks.py start TOOL [--work DIR]   prints MOCK_UPSTREAM_<TOOL>=...
+    python ci/mocks.py start SKILL [--work DIR]   prints MOCK_UPSTREAM=...
     python ci/mocks.py stop [--work DIR]
 
-The specs are listed in `ci/specs.json` with pinned URLs. Prism (Stoplight,
-Apache 2.0) is the binary `prism`, from `npm install @stoplight/prism-cli`.
-A tool without specs (Zammad) prints nothing: its tests use fixtures only.
+The specs are listed in `ci/specs.json` with pinned URLs. Each entry names the
+skills that use it. Prism (Stoplight, Apache 2.0) is the binary `prism`, from
+`npm install @stoplight/prism-cli`. A skill without specs (the Zammad skills)
+prints nothing: its tests use fixtures only.
 
 Spec fixups: `one-of-to-any-of` turns `oneOf` into `anyOf`. Atlassian's
 Confluence v2 spec marks the page body as `oneOf` two schemas that both match,
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import json
 import os
 import shutil
@@ -27,7 +29,9 @@ import time
 import urllib.request
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from common import ROOT, specs_for  # noqa: E402
 
 
 def free_port() -> int:
@@ -75,9 +79,9 @@ def prism_binary(work: Path) -> str:
     sys.exit("prism not found: npm install --prefix .cache/prism @stoplight/prism-cli@5.16.0")
 
 
-def start(tool: str, work: Path) -> str:
-    """Start Prism for the specs of a tool. Returns the `MOCK_UPSTREAM_<TOOL>` value, empty without specs."""
-    specs = json.loads((ROOT / "ci" / "specs.json").read_text(encoding="utf-8")).get(tool, [])
+def start(skill: str, work: Path) -> str:
+    """Start Prism for the specs of a skill. Returns the `MOCK_UPSTREAM` value, empty without specs."""
+    specs = specs_for(skill)
     if not specs:
         return ""
     work.mkdir(parents=True, exist_ok=True)
@@ -86,15 +90,16 @@ def start(tool: str, work: Path) -> str:
     pids: list[int] = []
     ports: list[int] = []
     for index, spec in enumerate(specs):
-        raw = work / f"{tool}-{index}.raw.json"
+        key = hashlib.sha256(spec["url"].encode()).hexdigest()[:12]
+        raw = work / f"{key}.raw.json"
         fetch(spec["url"], raw)
-        path = work / f"{tool}-{index}.json"
+        path = work / f"{skill}-{index}.json"
         document = json.loads(raw.read_text(encoding="utf-8"))
         if "one-of-to-any-of" in spec.get("fixups", []):
             document = rename_key(document, "oneOf", "anyOf")
         path.write_text(json.dumps(document), encoding="utf-8")
         port = free_port()
-        log = open(work / f"prism-{tool}-{index}.log", "wb")  # noqa: SIM115
+        log = open(work / f"prism-{skill}-{index}.log", "wb")  # noqa: SIM115
         proc = subprocess.Popen(
             [prism, "mock", "--port", str(port), "--host", "127.0.0.1", str(path)],
             stdout=log,
@@ -107,7 +112,7 @@ def start(tool: str, work: Path) -> str:
         if spec.get("rewrite"):
             suffix += f",rewrite={spec['rewrite']}"
         upstreams.append(f"{spec['prefix']}=http://127.0.0.1:{port}{suffix}")
-    (work / f"pids-{tool}.json").write_text(json.dumps(pids), encoding="utf-8")
+    (work / f"pids-{skill}.json").write_text(json.dumps(pids), encoding="utf-8")
     for port in ports:
         if not wait_for(port, 240):
             sys.exit(f"prism on port {port} did not start, see {work}/prism-*.log")
@@ -115,16 +120,15 @@ def start(tool: str, work: Path) -> str:
 
 
 @contextlib.contextmanager
-def serve(tool: str, work: Path = ROOT / ".cache" / "mocks"):
-    """Prism mocks of a tool while the block runs. Sets `MOCK_UPSTREAM_<TOOL>` in the environment."""
-    name = f"MOCK_UPSTREAM_{tool.upper()}"
+def serve(skill: str, work: Path = ROOT / ".cache" / "mocks"):
+    """Prism mocks of a skill while the block runs. Sets `MOCK_UPSTREAM` in the environment."""
     try:
-        value = start(tool, work)
+        value = start(skill, work)
         if value:
-            os.environ[name] = value
+            os.environ["MOCK_UPSTREAM"] = value
         yield value
     finally:
-        os.environ.pop(name, None)
+        os.environ.pop("MOCK_UPSTREAM", None)
         stop(work)
 
 
@@ -139,15 +143,15 @@ def stop(work: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("action", choices=["start", "stop"])
-    parser.add_argument("tool", nargs="?")
+    parser.add_argument("skill", nargs="?")
     parser.add_argument("--work", type=Path, default=ROOT / ".cache" / "mocks")
     args = parser.parse_args()
     if args.action == "start":
-        if not args.tool:
-            parser.error("start needs a tool")
-        value = start(args.tool, args.work)
+        if not args.skill:
+            parser.error("start needs a skill")
+        value = start(args.skill, args.work)
         if value:
-            print(f"MOCK_UPSTREAM_{args.tool.upper()}={value}")
+            print(f"MOCK_UPSTREAM={value}")
     else:
         stop(args.work)
 

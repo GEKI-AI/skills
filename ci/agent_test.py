@@ -3,7 +3,7 @@
     python ci/agent_test.py [--skill NAME ...] [--runs 3] [--min-pass 2] [--report FILE]
 
 For every task in `skills/<name>/tests/tasks/*.yaml` the script starts the mock
-of the skill (fixtures, and Prism for tools that have a vendor spec), installs
+of the skill (fixtures, and Prism for skills that have a vendor spec), installs
 the skill like a user would (copied to `~/.agents/skills` of an empty home), and
 runs `pi -p` with the task prompt. A run passes when the requests that the mock
 saw match the task: every `expect.requests` entry has a match, no `forbidden`
@@ -155,7 +155,7 @@ class Run:
 
 
 def run_once(skill: Skill, task: dict, model: str, base_url: str, timeout: int) -> Run:
-    upstreams = os.environ.get(f"MOCK_UPSTREAM_{skill.tool.upper()}", "").split(";")
+    upstreams = os.environ.get("MOCK_UPSTREAM", "").split(";")
     mock = Mock(skill.path / "tests" / "fixtures" / "routes.json", upstreams)
     url = mock.start()
     try:
@@ -169,7 +169,7 @@ def run_once(skill: Skill, task: dict, model: str, base_url: str, timeout: int) 
                 "GEKI_API_KEY": os.environ.get("GEKI_API_KEY", ""),
             }
             env.update(write_pi_home(home, model, base_url))
-            env.update(TEST_ENV[skill.tool](url))
+            env.update(TEST_ENV[skill.name](url))
             install_skill(skill, home)
             command = [
                 os.environ.get("PI_BIN", "pi"),
@@ -266,32 +266,31 @@ def main() -> int:
         return 2
     result: dict[str, dict] = {}
     lines = ["| Skill | Task | Result |", "| --- | --- | --- |"]
-    for tool in sorted({s.tool for s in skills}):
-        with serve(tool):
-            for skill in (s for s in skills if s.tool == tool):
-                reports = []
-                paths = sorted((skill.path / "tests" / "tasks").glob("*.yaml"))
-                for path in paths:
-                    task = yaml.safe_load(path.read_text(encoding="utf-8"))
-                    report = run_task(
-                        skill, task, args.runs, args.min_pass, model, base_url, args.timeout
-                    )
-                    reports.append(report)
-                    passes = sum(r["passed"] for r in report["runs"])
-                    count = f"{passes}/{len(report['runs'])}"
-                    print(
-                        f"{'pass' if report['passed'] else 'FAIL'} {skill.name}/{task['name']}: {count}"
-                    )
-                    lines.append(
-                        f"| {skill.name} | {task['name']} | {'pass' if report['passed'] else 'FAIL'} ({count}) |"
-                    )
-                    if not report["passed"]:
-                        for index, run in enumerate(report["runs"], 1):
-                            for problem in run["problems"]:
-                                print(f"  run {index}: {problem}")
-                if not paths:
-                    print(f"FAIL {skill.name}: no agent tasks, so nothing is verified")
-                result[skill.name] = skill_report(reports, model)
+    for skill in skills:
+        with serve(skill.name):
+            reports = []
+            paths = sorted((skill.path / "tests" / "tasks").glob("*.yaml"))
+            for path in paths:
+                task = yaml.safe_load(path.read_text(encoding="utf-8"))
+                report = run_task(
+                    skill, task, args.runs, args.min_pass, model, base_url, args.timeout
+                )
+                reports.append(report)
+                passes = sum(r["passed"] for r in report["runs"])
+                count = f"{passes}/{len(report['runs'])}"
+                print(
+                    f"{'pass' if report['passed'] else 'FAIL'} {skill.name}/{task['name']}: {count}"
+                )
+                lines.append(
+                    f"| {skill.name} | {task['name']} | {'pass' if report['passed'] else 'FAIL'} ({count}) |"
+                )
+                if not report["passed"]:
+                    for index, run in enumerate(report["runs"], 1):
+                        for problem in run["problems"]:
+                            print(f"  run {index}: {problem}")
+            if not paths:
+                print(f"FAIL {skill.name}: no agent tasks, so nothing is verified")
+            result[skill.name] = skill_report(reports, model)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as handle:

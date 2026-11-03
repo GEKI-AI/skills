@@ -6,13 +6,13 @@
 The rules, by changed path:
 
 - `skills/<name>/...`  that skill
-- `tools/<tool>/...`   every skill of that tool
+- `ci/specs.json`      the skills whose specs changed
 - documentation (`*.md` at the root, `docs/`, `.github/`, `LICENSE`, `NOTICE`,
   `.gitignore`, `package.json`)  nothing
-- everything else (`ci/`, mock specs, `.forgejo/`, `conftest.py`, `pyproject.toml`,
+- everything else (`ci/`, `.forgejo/`, `conftest.py`, `pyproject.toml`,
   unknown files)  every skill
 
-The skills and tools come from the repo, not from a list in a workflow. An empty
+The skills come from the repo, not from a list in a workflow. An empty
 or unknown base means every skill. The result is a superset: the fingerprint of a
 skill (`ci/fingerprint.py`) decides what really runs.
 """
@@ -23,7 +23,7 @@ import argparse
 import json
 import sys
 
-from common import load_skills, run
+from common import load_skills, run, specs_for
 
 IGNORED_FILES = {
     "README.md",
@@ -39,20 +39,23 @@ IGNORED_FILES = {
 IGNORED_DIRS = ("docs/", ".github/")
 
 
-def affected(paths: list[str], tool_of: dict[str, str]) -> list[str]:
-    """Skill names touched by `paths`. `tool_of` maps every skill name to its tool."""
+SPECS_PATH = "ci/specs.json"
+
+
+def affected(paths: list[str], names: list[str], spec_users: list[str] | None = None) -> list[str]:
+    """Skill names touched by `paths`. `spec_users` are the skills whose specs changed, if known."""
     hit: set[str] = set()
     for path in paths:
         parts = path.split("/")
         if parts[0] == "skills" and len(parts) > 2:
-            if parts[1] in tool_of:
+            if parts[1] in names:
                 hit.add(parts[1])
-        elif parts[0] == "tools" and len(parts) > 2:
-            hit.update(name for name, tool in tool_of.items() if tool == parts[1])
+        elif path == SPECS_PATH and spec_users is not None:
+            hit.update(name for name in spec_users if name in names)
         elif path in IGNORED_FILES or path.startswith(IGNORED_DIRS):
             continue
         else:
-            return sorted(tool_of)
+            return sorted(names)
     return sorted(hit)
 
 
@@ -72,13 +75,23 @@ def changed_paths(base: str) -> list[str] | None:
     return [line for line in out.splitlines() if line]
 
 
+def spec_users(base: str, names: list[str]) -> list[str]:
+    """Skills whose specs differ between `base` and the working tree."""
+    before = run("git", "show", f"{base}:{SPECS_PATH}", check=False)
+    try:
+        return [name for name in names if specs_for(name, before) != specs_for(name)]
+    except (ValueError, TypeError, KeyError):
+        return names
+
+
 def affected_since(base: str) -> tuple[list[str], str]:
     """(skill names, reason) for a base."""
-    tool_of = {s.name: s.tool for s in load_skills()}
+    names = [s.name for s in load_skills()]
     paths = changed_paths(base)
     if paths is None:
-        return sorted(tool_of), "base unknown, every skill"
-    return affected(paths, tool_of), f"{len(paths)} changed files"
+        return sorted(names), "base unknown, every skill"
+    users = spec_users(base, names) if SPECS_PATH in paths else None
+    return affected(paths, names, users), f"{len(paths)} changed files"
 
 
 def main() -> int:

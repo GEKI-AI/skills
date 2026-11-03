@@ -4,8 +4,8 @@ description: Search and read tickets and knowledge base answers in Zammad. Find 
 license: Apache-2.0
 compatibility: Python 3.11+, access to your Zammad instance over HTTPS
 metadata:
-  version: "1"
-  geki-tool: zammad
+  version: "2"
+  geki-tags: zammad, tickets, support
   geki-category: tickets
   geki-access: read
   geki-auth: company, person-token

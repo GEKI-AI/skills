@@ -15,7 +15,7 @@ Without `PUBLISH_ENABLED` or the key, the run fails with a message. It is never 
 
 ## What it does
 
-For each skill the script builds a zip with the folder `<name>/` (without `tests/`) plus `assets/logo.svg` from `tools/<tool>/`. In the zipped `SKILL.md` it sets `metadata.geki-tool-name` (the `name` of `tools/<tool>/tool.yaml`) and `metadata.geki-tested` (the date of the green result). The files in the repo stay as they are. Then it calls the GEKI API:
+For each skill the script builds a zip with the folder `<name>/` (without `tests/`). It includes `assets/logo.svg`. In the zipped `SKILL.md` it sets `metadata.geki-tested` (the date of the green result). The `tags` field of the API call is the list in `metadata.geki-tags`. The files in the repo stay as they are. Then it calls the GEKI API:
 
 - The skill is not in the GEKI org yet: `POST /v1/skills` with the zip, `description`, `tags` and `shared_with=all`.
 - It exists: `POST /v1/skills/{id}` with `mode=new_version`. It never sends `overwrite`, so a shared version is never replaced. If the skill is not shared with `all`, the call also sets `shared_with=all`.

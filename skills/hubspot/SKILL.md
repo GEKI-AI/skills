@@ -4,8 +4,8 @@ description: Work with HubSpot CRM contacts, companies and deals. Search and rea
 license: Apache-2.0
 compatibility: Python 3.11+, access to api.hubapi.com over HTTPS
 metadata:
-  version: "1"
-  geki-tool: hubspot
+  version: "2"
+  geki-tags: hubspot, crm, sales
   geki-category: crm
   geki-access: read, write
   geki-auth: company

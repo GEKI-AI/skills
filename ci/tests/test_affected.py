@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -5,52 +6,64 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import affected  # noqa: E402
+from common import SPECS  # noqa: E402
 
-TOOL_OF = {
-    "confluence-read": "confluence",
-    "confluence-write": "confluence",
-    "zammad-read": "zammad",
-    "github": "github",
-}
+NAMES = ["confluence-read", "confluence-write", "zammad-read", "github"]
 
 
 def test_a_skill_file_affects_that_skill_only():
-    assert affected.affected(["skills/zammad-read/scripts/zammad.py"], TOOL_OF) == ["zammad-read"]
-    assert affected.affected(["skills/github/tests/fixtures/routes.json"], TOOL_OF) == ["github"]
+    assert affected.affected(["skills/zammad-read/scripts/zammad.py"], NAMES) == ["zammad-read"]
+    assert affected.affected(["skills/github/tests/fixtures/routes.json"], NAMES) == ["github"]
 
 
-def test_a_tool_file_affects_all_skills_of_the_tool():
-    assert affected.affected(["tools/confluence/logo.svg"], TOOL_OF) == [
+def test_changed_specs_affect_the_skills_that_use_them():
+    paths = ["ci/specs.json"]
+    assert affected.affected(paths, NAMES, ["confluence-read", "confluence-write"]) == [
         "confluence-read",
         "confluence-write",
     ]
+    assert affected.affected(paths, NAMES, []) == []
+
+
+def test_changed_specs_with_unknown_users_affect_every_skill():
+    assert affected.affected(["ci/specs.json"], NAMES) == sorted(NAMES)
+
+
+def test_spec_users_are_the_skills_whose_specs_differ_from_the_base(monkeypatch):
+    entries = [e for e in json.loads(SPECS.read_text()) if e["skills"] != ["github"]]
+    monkeypatch.setattr(affected, "run", lambda *args, **kwargs: json.dumps(entries))
+    assert affected.spec_users("base", ["github", "hubspot", "zammad-read"]) == ["github"]
+
+
+def test_a_base_without_the_new_spec_format_means_every_skill(monkeypatch):
+    monkeypatch.setattr(affected, "run", lambda *args, **kwargs: '{"zammad": []}')
+    assert affected.spec_users("base", ["github", "hubspot"]) == ["github", "hubspot"]
 
 
 def test_shared_code_specs_and_workflows_affect_every_skill():
-    every = sorted(TOOL_OF)
+    every = sorted(NAMES)
     for path in [
         "ci/mockserver.py",
-        "ci/specs.json",
         "conftest.py",
         ".forgejo/workflows/skills.yml",
         "pyproject.toml",
         "something-new.txt",
     ]:
-        assert affected.affected([path], TOOL_OF) == every, path
+        assert affected.affected([path], NAMES) == every, path
 
 
 def test_documentation_affects_nothing():
     docs = ["README.md", "docs/testing.md", ".github/pull_request_template.md", "LICENSE"]
-    assert affected.affected(docs, TOOL_OF) == []
+    assert affected.affected(docs, NAMES) == []
 
 
-def test_a_removed_skill_or_tool_is_ignored():
-    assert affected.affected(["skills/gone/SKILL.md", "tools/gone/tool.yaml"], TOOL_OF) == []
+def test_a_removed_skill_is_ignored():
+    assert affected.affected(["skills/gone/SKILL.md"], NAMES) == []
 
 
 def test_mixed_changes_add_up():
     paths = ["README.md", "skills/github/SKILL.md", "skills/zammad-read/SKILL.md"]
-    assert affected.affected(paths, TOOL_OF) == ["github", "zammad-read"]
+    assert affected.affected(paths, NAMES) == ["github", "zammad-read"]
 
 
 def test_unknown_base_means_every_skill(monkeypatch):

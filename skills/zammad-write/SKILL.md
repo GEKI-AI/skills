@@ -4,8 +4,8 @@ description: Create tickets, reply to tickets and set the ticket state in Zammad
 license: Apache-2.0
 compatibility: Python 3.11+, access to your Zammad instance over HTTPS
 metadata:
-  version: "1"
-  geki-tool: zammad
+  version: "2"
+  geki-tags: zammad, tickets, support
   geki-category: tickets
   geki-access: write
   geki-auth: company, person-token

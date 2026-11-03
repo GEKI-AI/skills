@@ -36,6 +36,6 @@ body:
     id: setup
     attributes:
       label: Your setup
-      description: Python version, the tool and its version or plan, and whether you use a company or a personal token. No secrets.
+      description: Python version, the product and its version or plan, and whether you use a company or a personal token. No secrets.
     validations:
       required: false

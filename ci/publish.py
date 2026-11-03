@@ -12,10 +12,9 @@ For every skill this builds a zip and compares the repo `metadata.version` with 
   `overwrite`, so a shared version is never replaced.
 - the platform has the same or a higher version: skipped. A second run does nothing.
 
-The zip has one folder `<name>/` with the skill files, without `tests/`, plus
-`assets/logo.svg` from `tools/<tool>/`. Its `SKILL.md` gets `geki-tool-name` from
-`tools/<tool>/tool.yaml` and `geki-tested` (the date of the green result) in `metadata`.
-The repo files stay as they are.
+The zip has one folder `<name>/` with the skill files (including `assets/logo.svg`),
+without `tests/`. Its `SKILL.md` gets `geki-tested` (the date of the green result) in
+`metadata`. The repo files stay as they are. The `tags` field comes from `geki-tags`.
 
 The script sends nothing unless `GEKI_PUBLISH_ENABLED=1` and `GEKI_PUBLISH_KEY` are
 set, and it fails when they are not (`--dry-run` only prints). With
@@ -40,7 +39,7 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from common import TOOLS, Skill, load_tool
+from common import Skill
 from versions import evaluate
 
 EXCLUDED_DIRS = {"tests", "__pycache__", ".pytest_cache"}
@@ -65,8 +64,7 @@ def with_metadata(text: str, values: dict[str, str]) -> str:
 
 
 def zip_metadata(skill: Skill, tested: str = "") -> dict[str, str]:
-    name = load_tool(skill.tool).get("name") if skill.tool else ""
-    return {"geki-tool-name": str(name or ""), "geki-tested": tested[:10]}
+    return {"geki-tested": tested[:10]}
 
 
 def build_zip(skill: Skill, tested: str = "") -> bytes:
@@ -80,9 +78,6 @@ def build_zip(skill: Skill, tested: str = "") -> bytes:
             and p.suffix != ".pyc"
         )
         entries = [(f"{skill.name}/{p.relative_to(skill.path).as_posix()}", p) for p in files]
-        logo = TOOLS / skill.tool / "logo.svg"
-        if logo.exists():
-            entries.append((f"{skill.name}/assets/logo.svg", logo))
         for arcname, path in sorted(entries):
             info = zipfile.ZipInfo(arcname, date_time=(1980, 1, 1, 0, 0, 0))
             info.external_attr = (0o755 if os.access(path, os.X_OK) else 0o644) << 16
@@ -159,7 +154,7 @@ class Api:
 
 
 def tags_for(skill: Skill) -> str:
-    return json.dumps([t for t in (skill.tool, skill.get("geki-category")) if t])
+    return json.dumps(skill.list("geki-tags"))
 
 
 def publish_one(api: Api | None, skill: Skill, tested: str = "") -> str:

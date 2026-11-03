@@ -1,3 +1,4 @@
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -7,19 +8,16 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import fingerprint  # noqa: E402
-from common import ROOT, SKILLS, TOOLS, Skill  # noqa: E402
+from common import ROOT, SKILLS, Skill  # noqa: E402
 
 
 @pytest.fixture
 def copy(tmp_path, monkeypatch):
-    """A copy of one skill and its tool, with the module pointed at the copy."""
+    """A copy of one skill, with the module pointed at the copy."""
     (tmp_path / "skills").mkdir()
-    (tmp_path / "tools").mkdir()
     shutil.copytree(SKILLS / "zammad-read", tmp_path / "skills" / "zammad-read")
-    shutil.copytree(TOOLS / "zammad", tmp_path / "tools" / "zammad")
-    monkeypatch.setattr(fingerprint, "TOOLS", tmp_path / "tools")
     monkeypatch.setattr(fingerprint, "RUNNER_FILES", [])
-    monkeypatch.setattr(fingerprint, "specs_of", lambda tool: "[]")
+    monkeypatch.setattr(fingerprint, "specs_of", lambda skill: "[]")
     return tmp_path
 
 
@@ -47,9 +45,9 @@ def test_readme_and_changelog_do_not_change_the_hash(copy):
     assert value(copy) == before
 
 
-def test_the_tool_folder_changes_the_hash(copy):
+def test_the_logo_changes_the_hash(copy):
     before = value(copy)
-    (copy / "tools" / "zammad" / "tool.yaml").write_text("name: other\n", encoding="utf-8")
+    (copy / "skills" / "zammad-read" / "assets" / "logo.svg").write_text("<svg/>", encoding="utf-8")
     assert value(copy) != before
 
 
@@ -60,7 +58,7 @@ def test_specs_pins_and_models_change_the_hash(copy, monkeypatch):
     assert value(copy, prism="2") != before
     assert value(copy, judge="j") != before
     assert value(copy, base_url="v") != before
-    monkeypatch.setattr(fingerprint, "specs_of", lambda tool: '[{"url": "x"}]')
+    monkeypatch.setattr(fingerprint, "specs_of", lambda skill: '[{"url": "x"}]')
     assert value(copy) != before
 
 
@@ -72,6 +70,11 @@ def test_runner_code_changes_the_hash(copy, monkeypatch):
     before = value(copy)
     runner.write_text("b", encoding="utf-8")
     assert value(copy) != before
+
+
+def test_specs_of_a_skill_are_its_own_entries():
+    assert json.loads(fingerprint.specs_of("github"))[0]["skills"] == ["github"]
+    assert fingerprint.specs_of("zammad-read") == "[]"
 
 
 def test_every_runner_file_exists():

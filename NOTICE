@@ -3,6 +3,6 @@ Copyright 2026 GEKI
 
 This product includes software developed at GEKI (https://geki.ai).
 
-Tool logos identify the tools only and belong to their owners:
-- Confluence, GitHub, HubSpot: Simple Icons 16.36.0 (https://simpleicons.org, CC0-1.0), in the brand colour.
-- Zammad: from the Zammad repository (https://github.com/zammad/zammad, public/assets/images/logo.svg).
+Logos (skills/<name>/assets/logo.svg) identify the products only and belong to their owners:
+- confluence-read, confluence-write, github, hubspot: Simple Icons 16.36.0 (https://simpleicons.org, CC0-1.0), in the brand colour.
+- zammad-read, zammad-write: from the Zammad repository (https://github.com/zammad/zammad, public/assets/images/logo.svg).

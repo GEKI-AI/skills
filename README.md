@@ -2,9 +2,9 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-Tested [Agent Skills](https://agentskills.io) for [Pi](https://pi.dev) and for other agents that read the Agent Skills format. A skill is a folder with a `SKILL.md` that tells the agent how to do a task, and a small script that does the work. These skills are integrations for the tools a company already uses.
+Tested [Agent Skills](https://agentskills.io) for [Pi](https://pi.dev) and for other agents that read the Agent Skills format. A skill is a folder with a `SKILL.md` that tells the agent how to do a task, and a small script that does the work. These skills are integrations for the products a company already uses.
 
-Every skill is tested twice. Its script runs against a mock of the tool's API, built from the vendor's OpenAPI spec where one exists. And a vanilla Pi has to finish example tasks with it, checked by the requests the mock saw. You do not need GEKI to use them.
+Every skill is tested twice. Its script runs against a mock of the product's API, built from the vendor's OpenAPI spec where one exists. And a vanilla Pi has to finish example tasks with it, checked by the requests the mock saw. You do not need GEKI to use them.
 
 ## Skills
 
@@ -23,12 +23,12 @@ Every skill is tested twice. Its script runs against a mock of the tool's API, b
 
 - [`hubspot`](skills/hubspot): Work with HubSpot CRM contacts, companies and deals.
 
-### Developer tools
+### Development
 
 - [`github`](skills/github): Work with GitHub issues, pull requests, comments and files.
 <!-- /generated:catalog -->
 
-Tool names and logos belong to their owners. They are used only to identify the tool.
+Product names and logos belong to their owners. They are used only to identify the products.
 
 Each skill folder has a `README.md` with example requests, the variables it needs, the setup steps, the install line for Pi and the test status.
 
@@ -69,7 +69,7 @@ export EXAMPLE_URL=https://example.com
 export EXAMPLE_TOKEN='your-api-token'
 ```
 
-All skills of one tool use the same variable names, so one setting serves all skills of that tool. The README of each skill lists its variables and says how to get the token. Give each token only the rights the agent needs. That is why some tools have a `-read` skill and a `-write` skill: you can run an agent with a token that cannot write.
+Skills for the same product use the same variable names, so one setting serves all of them. The README of each skill lists its variables and says how to get the token. Give each token only the rights the agent needs. That is why some products have a `-read` skill and a `-write` skill: you can run an agent with a token that cannot write.
 
 Do not paste tokens into the chat with the agent.
 

@@ -23,19 +23,18 @@ The workflow never reports green without a test. A missing `GEKI_API_KEY` fails 
 `ci/affected.py` maps the changed files to skills:
 
 - `skills/<name>/...` is that skill.
-- `tools/<tool>/...` is every skill of that tool.
+- `ci/specs.json` is every skill whose entries in it changed.
 - Documentation (`*.md` in the root, `docs/`, `.github/`, `LICENSE`, `NOTICE`, `package.json`) is nothing.
-- Everything else (`ci/`, mock specs in `ci/specs.json`, `.forgejo/`, `conftest.py`, new files) is every skill.
+- Everything else (`ci/`, `.forgejo/`, `conftest.py`, new files) is every skill.
 
-The skills and the tools come from the folders of the repo. There is no list in the workflows.
+The skills come from the folders of the repo. There is no list in the workflows.
 
 ## Results are remembered by fingerprint
 
 `ci/fingerprint.py` hashes everything a test result depends on:
 
 - the skill folder, without `README.md` and `CHANGELOG.md`
-- the folder of its tool
-- the mock specs of its tool in `ci/specs.json`
+- the mock specs of the skill in `ci/specs.json`
 - the versions of Pi and Prism (`ci/pins.env`), and the Python version of the empty environment
 - the test model, the judge model and the model base URL
 - the runner code (`RUNNER_FILES` in `ci/fingerprint.py`)
@@ -75,11 +74,11 @@ The runner label is `datenhof-ci`. It has Python, uv, Node and Docker. `ci/setup
 
 `ci/mockserver.py` is a small HTTP server. It answers from `skills/<name>/tests/fixtures/routes.json` and logs every request (method, path, query, headers, JSON body). Each route has `method`, `path` (with `{name}` parts), optional `query` and `json` conditions, `status` and a `body` or a `file`. The first route that matches wins, so put the specific ones first.
 
-For tools with a vendor OpenAPI spec, the mock first passes each request to a [Prism](https://github.com/stoplightio/prism) mock built from that spec. Prism rejects a request that does not match the spec, and the test fails with the reason. When Prism accepts the request, the answer comes from the fixture, so the script sees realistic data. The specs are listed with pinned URLs in `ci/specs.json`. `ci/mocks.py start <tool>` downloads them, starts Prism and prints `MOCK_UPSTREAM_<TOOL>=...`. Export that line before `pytest`, or let `python ci/run_scripts.py --skills <names>` do it.
+For skills with a vendor OpenAPI spec, the mock first passes each request to a [Prism](https://github.com/stoplightio/prism) mock built from that spec. Prism rejects a request that does not match the spec, and the test fails with the reason. When Prism accepts the request, the answer comes from the fixture, so the script sees realistic data. The specs are listed with pinned URLs in `ci/specs.json`, a list where each entry names the skills that use it (`"skills": ["confluence-read", "confluence-write"]`). `ci/mocks.py start <skill>` downloads the specs of that skill, starts Prism and prints `MOCK_UPSTREAM=...`. Export that line before `pytest`, or let `python ci/run_scripts.py --skills <names>` do it.
 
 Prism checks the request against the spec, not against the real service. A spec can be stricter or looser than the real API. Examples we met: a search spec that requires paging fields the real API does not need, and a spec that lists a body as `oneOf` two schemas that both match. `ci/specs.json` has a `fixups` field for the rare cases where the spec is wrong. A real-API run, started by hand, finds the rest.
 
-Tools without a spec use the fixtures only.
+Skills without a spec use the fixtures only.
 
 ## Script tests
 
@@ -93,13 +92,13 @@ def test_search(cli, mock):
     assert mock.requests[0]["query"]["query"] == "printer"
 ```
 
-`cli` runs the script of the skill in a clean environment with the variables of the tool pointing to the mock (see `TEST_ENV` in `ci/common.py`). Set `SKILL_PYTHON` to run the script with another interpreter.
+`cli` runs the script of the skill in a clean environment with the variables of the skill pointing to the mock (see `TEST_ENV` in `ci/common.py`, one entry per skill). Set `SKILL_PYTHON` to run the script with another interpreter.
 
-`python ci/run_scripts.py --skills a,b` is what CI runs. Per tool it starts the Prism mocks, builds a fresh venv of Python 3.11 that holds only the packages the skills declare, and runs the tests of each skill with `SKILL_PYTHON` set to that venv. An undeclared import fails. A skill is green only when no test failed and at least one test passed.
+`python ci/run_scripts.py --skills a,b` is what CI runs. For each skill it starts the Prism mocks, builds a fresh venv of Python 3.11 that holds only the packages the skill declares, and runs its tests with `SKILL_PYTHON` set to that venv. An undeclared import fails. A skill is green only when no test failed and at least one test passed.
 
 Test what the script sends (path, fields, headers), what it prints, and the error cases. Mark a read-only test against the real service with `@pytest.mark.real_api`: it uses the `real_cli` fixture and runs only with `REAL_API=1` and the real variables.
 
-The real-API run is the workflow `Real API`. It is manual and optional: it runs only when someone starts it, with an optional `tool` input. It never affects `Skills / tests`, publishing, the saved test results or the READMEs. Started without the secrets of a tool, it fails loudly. Normal testing uses only the specs, the mocks and the agent tasks.
+The real-API run is the workflow `Real API`. It is manual and optional: it runs only when someone starts it, with an optional `skills` input (names, comma-separated). It never affects `Skills / tests`, publishing, the saved test results or the READMEs. Started without the variables of a skill, it fails loudly. Normal testing uses only the specs, the mocks and the agent tasks.
 
 ## The GEKI image
 

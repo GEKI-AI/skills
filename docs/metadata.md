@@ -14,8 +14,8 @@ All values under `metadata` are strings. Write each key on one line. The keys st
 | Key | Meaning |
 | --- | --- |
 | `version` | Integer. Raise it in the pull request. CI checks that it increases when the skill changed. |
-| `geki-tool` | Tool id (`example`). The folder `tools/<id>/` holds the name, the logo and the website. |
-| `geki-category` | `knowledge`, `tickets`, `crm`, `dev`, and so on. |
+| `geki-tags` | Free tags, comma-separated, 1 to 10. Lowercase letters and digits, words joined by single hyphens, at most 32 characters each. Use the product name as a tag (`example`), then words that help to find the skill. |
+| `geki-category` | One of `knowledge`, `tickets`, `crm`, `dev`, `chat`, `files`, `finance`, `hr`, `marketing`, `analytics`, `other`. The README sections and the catalog filter use it. |
 | `geki-access` | `read`, `write`, or `read, write`. |
 | `geki-auth` | Any of `company` (one shared token), `person-token` (each person pastes a token), `person-oauth` (each person signs in). |
 | `geki-credentials` | Secret variables, comma-separated. |
@@ -26,7 +26,9 @@ All values under `metadata` are strings. Write each key on one line. The keys st
 | `geki-image` | A guest image other than `default`, for example `browser`. |
 | `geki-origin` | Set on copies: `example-read@3`. |
 
-All skills of one `geki-tool` use the same `geki-credentials`, `geki-settings` and `geki-hosts`.
+Skills for the same product use the same `geki-credentials`, `geki-settings` and `geki-hosts`.
+
+A skill can have a logo at `assets/logo.svg`. It is an SVG file of at most 64 KB, without scripts and external references. It is zipped with the skill. Two skills for the same product each keep their own copy.
 
 A credential name must be an environment variable name that is not reserved. The prefixes `OPENAI_`, `GEKI_`, `PI_`, `CODEX_`, `GIT_` and `AGENT_BROWSER_` are reserved (`GIT_TOKEN`, `GIT_PASSWORD` and `GIT_ACCESS_TOKEN` are allowed), and so are system names such as `PATH`, `HOME` and `USER`. A key takes at most 20 entries.
 
@@ -42,7 +44,7 @@ license: Apache-2.0
 compatibility: Python 3.11+, access to your Example site over HTTPS
 metadata:
   version: "1"
-  geki-tool: example
+  geki-tags: example, wiki
   geki-category: knowledge
   geki-access: read
   geki-auth: company, person-token

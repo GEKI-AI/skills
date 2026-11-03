@@ -4,8 +4,8 @@ description: Search and read Confluence Cloud. Find pages with CQL or plain text
 license: Apache-2.0
 compatibility: Python 3.11+, access to your Confluence Cloud site over HTTPS
 metadata:
-  version: "1"
-  geki-tool: confluence
+  version: "2"
+  geki-tags: confluence, wiki, atlassian
   geki-category: knowledge
   geki-access: read
   geki-auth: company, person-token

@@ -27,6 +27,9 @@ def test_readmes_are_up_to_date():
         assert path.read_text(encoding="utf-8") == text, f"run python ci/catalog.py: {path}"
 
 
+VERSION = f'version: "{Skill(SKILLS / "confluence-read").version}"'
+
+
 def broken(tmp_path: Path, old: str, new: str) -> list[str]:
     target = tmp_path / "confluence-read"
     shutil.copytree(SKILLS / "confluence-read", target)
@@ -54,14 +57,17 @@ def broken(tmp_path: Path, old: str, new: str) -> list[str]:
         ),
         ("geki-access: read", "geki-access: admin", "geki-access must be"),
         ("geki-auth: company, person-token", "geki-auth: magic", "geki-auth must list"),
-        ('version: "1"', "version: 1", "must be a string"),
-        ('version: "1"', 'version: "0"', "version must be an integer"),
+        (VERSION, "version: 1", "must be a string"),
+        (VERSION, 'version: "0"', "version must be an integer"),
         ("geki-category: knowledge", "geki-category: nonsense", "geki-category must be"),
         (
-            "  geki-tool: confluence\n",
-            "  geki-tool: confluence\n  geki-unknown: x\n",
+            "  geki-tags: confluence, wiki, atlassian\n",
+            "  geki-tags: confluence, wiki, atlassian\n  geki-unknown: x\n",
             "not in the convention",
         ),
+        ("geki-tags: confluence, wiki, atlassian", "geki-tags: ", "needs at least one tag"),
+        ("geki-tags: confluence, wiki, atlassian", "geki-tags: Confluence", "geki-tags entry"),
+        ("geki-tags: confluence, wiki, atlassian", "geki-tags: wiki page", "geki-tags entry"),
         ("license: Apache-2.0", "license: Proprietary", "license must be one of"),
         ("name: confluence-read", "name: other-name", "name must equal the folder name"),
     ],
@@ -91,13 +97,38 @@ def test_zip_has_one_folder_logo_and_no_tests():
     assert publish.build_zip(skill) == publish.build_zip(skill)
 
 
-def test_zipped_skill_md_names_the_tool_and_the_test_date():
+def test_zipped_skill_md_gets_the_test_date_only():
     skill = next(s for s in load_skills() if s.name == "github")
     archive = zipfile.ZipFile(io.BytesIO(publish.build_zip(skill, "2026-11-02T03:17:00Z")))
     text = archive.read("github/SKILL.md").decode("utf-8")
-    added = '  geki-tool-name: "GitHub"\n  geki-tested: "2026-11-02"\n'
+    added = '  geki-tested: "2026-11-02"\n'
     assert added in text
     assert text.replace(added, "") == skill.text
+
+
+def test_tags_come_from_the_metadata():
+    skill = next(s for s in load_skills() if s.name == "github")
+    assert json.loads(publish.tags_for(skill)) == ["github", "issues", "pull-requests"]
+
+
+def test_validator_checks_the_logo(tmp_path):
+    target = tmp_path / "github"
+    shutil.copytree(SKILLS / "github", target)
+    logo = target / "assets" / "logo.svg"
+    for text, expected in [
+        ("<svg", "not valid XML"),
+        ("<html/>", "root is not svg"),
+        ('<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>', "script"),
+        ("<svg>" + " " * 70_000 + "</svg>", "larger than 64 KB"),
+    ]:
+        logo.write_text(text, encoding="utf-8")
+        errors: list[str] = []
+        validate.check_logo(Skill(target), errors)
+        assert any(expected in e for e in errors), (text[:20], errors)
+    logo.unlink()
+    errors = []
+    validate.check_logo(Skill(target), errors)
+    assert errors == []
 
 
 class FakeApi:
@@ -183,7 +214,7 @@ def test_publish_adds_a_version_and_never_overwrites():
 
 def test_publish_skips_a_version_the_platform_has():
     skill = next(s for s in load_skills() if s.name == "hubspot")
-    api = FakeApi([{"id": "sk_1", "name": "hubspot", "current_version": 1}])
+    api = FakeApi([{"id": "sk_1", "name": "hubspot", "current_version": skill.version}])
     try:
         message = publish.publish_one(publish.Api(api.url, "key-1"), skill)
     finally:
@@ -205,7 +236,7 @@ def test_publish_shares_a_skill_that_exists_but_is_not_shared():
 def test_publish_finds_the_skill_on_a_later_page():
     skill = next(s for s in load_skills() if s.name == "hubspot")
     rows = [{"id": f"sk_{i}", "name": f"other-{i}", "current_version": 1} for i in range(5)]
-    rows.append({"id": "sk_h", "name": "hubspot", "current_version": 1})
+    rows.append({"id": "sk_h", "name": "hubspot", "current_version": skill.version})
     api = FakeApi(rows, page=2)
     try:
         message = publish.publish_one(publish.Api(api.url, "key-1"), skill)

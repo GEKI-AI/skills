@@ -2,8 +2,8 @@
 
     python ci/run_scripts.py --skills a,b [--env empty|image] [--report FILE]
 
-Per tool, in one go: start the Prism mocks of the tool, build the environment the
-scripts run in, run pytest once per skill, stop the mocks.
+Per skill: start the Prism mocks of the skill, build the environment the script
+runs in, run pytest, stop the mocks.
 
 - `empty`: a fresh venv of Python 3.11 with only the packages the skills declare
   (`geki-python`). The scripts run with that interpreter, so an undeclared import
@@ -88,40 +88,34 @@ def read_junit(path: Path) -> dict:
     return {**counts, "passed": passed, "ok": counts["failed"] == 0 and passed > 0}
 
 
-def run_tool(tool: str, skills: list[Skill], env: str) -> dict[str, dict]:
-    packages = sorted({p for s in skills for p in s.list("geki-python")})
-    folder = WORK / f"env-{tool}"
+def run_skill(skill: Skill, env: str) -> dict:
+    packages = sorted(skill.list("geki-python"))
+    folder = WORK / f"env-{skill.name}"
     python = (make_image_env if env == "image" else make_empty_env)(packages, folder)
     print(
-        f"{tool}: scripts run with {python}, packages: {', '.join(packages) or 'none'}", flush=True
+        f"{skill.name}: script runs with {python}, packages: {', '.join(packages) or 'none'}",
+        flush=True,
     )
-    report: dict[str, dict] = {}
-    with serve(tool):
-        for skill in skills:
-            junit = WORK / f"junit-{skill.name}.xml"
-            junit.parent.mkdir(parents=True, exist_ok=True)
-            junit.unlink(missing_ok=True)
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "pytest",
-                    "-q",
-                    "-p",
-                    "no:cacheprovider",
-                    f"--junitxml={junit}",
-                    f"skills/{skill.name}",
-                ],
-                cwd=ROOT,
-                env={
-                    **os.environ,
-                    "SKILL_PYTHON": python,
-                    "PYTHONDONTWRITEBYTECODE": "1",
-                },
-                check=False,
-            )
-            report[skill.name] = read_junit(junit)
-    return report
+    junit = WORK / f"junit-{skill.name}.xml"
+    junit.parent.mkdir(parents=True, exist_ok=True)
+    junit.unlink(missing_ok=True)
+    with serve(skill.name):
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                "-q",
+                "-p",
+                "no:cacheprovider",
+                f"--junitxml={junit}",
+                f"skills/{skill.name}",
+            ],
+            cwd=ROOT,
+            env={**os.environ, "SKILL_PYTHON": python, "PYTHONDONTWRITEBYTECODE": "1"},
+            check=False,
+        )
+    return read_junit(junit)
 
 
 def main() -> int:
@@ -135,9 +129,7 @@ def main() -> int:
     if wanted and len(skills) != len(wanted):
         print(f"unknown skills: {', '.join(sorted(wanted - {s.name for s in skills}))}")
         return 2
-    report: dict[str, dict] = {}
-    for tool in sorted({s.tool for s in skills}):
-        report.update(run_tool(tool, [s for s in skills if s.tool == tool], args.env))
+    report = {skill.name: run_skill(skill, args.env) for skill in skills}
     for name, row in report.items():
         mark = "ok  " if row["ok"] else "FAIL"
         print(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -10,20 +11,42 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 SKILLS = ROOT / "skills"
-TOOLS = ROOT / "tools"
+SPECS = ROOT / "ci" / "specs.json"
 
 REPO_URL = "https://github.com/GEKI-AI/skills"
 PINS = ROOT / "ci" / "pins.env"
 
+
+def _confluence(url: str) -> dict[str, str]:
+    return {"CONFLUENCE_URL": url, "CONFLUENCE_TOKEN": "tester@example.com:test-token"}
+
+
+def _zammad(url: str) -> dict[str, str]:
+    return {"ZAMMAD_URL": url, "ZAMMAD_TOKEN": "test-token"}
+
+
+def _github(url: str) -> dict[str, str]:
+    return {"GITHUB_BASE_URL": url, "GITHUB_TOKEN": "test-token"}
+
+
+def _hubspot(url: str) -> dict[str, str]:
+    return {"HUBSPOT_BASE_URL": url, "HUBSPOT_TOKEN": "test-token"}
+
+
 TEST_ENV = {
-    "confluence": lambda url: {
-        "CONFLUENCE_URL": url,
-        "CONFLUENCE_TOKEN": "tester@example.com:test-token",
-    },
-    "zammad": lambda url: {"ZAMMAD_URL": url, "ZAMMAD_TOKEN": "test-token"},
-    "github": lambda url: {"GITHUB_BASE_URL": url, "GITHUB_TOKEN": "test-token"},
-    "hubspot": lambda url: {"HUBSPOT_BASE_URL": url, "HUBSPOT_TOKEN": "test-token"},
+    "confluence-read": _confluence,
+    "confluence-write": _confluence,
+    "github": _github,
+    "hubspot": _hubspot,
+    "zammad-read": _zammad,
+    "zammad-write": _zammad,
 }
+
+
+def specs_for(skill: str, text: str | None = None) -> list[dict]:
+    """The mock specs of a skill: the entries of `ci/specs.json` that list it."""
+    entries = json.loads(SPECS.read_text(encoding="utf-8") if text is None else text)
+    return [entry for entry in entries if skill in entry["skills"]]
 
 
 def read_pins() -> dict[str, str]:
@@ -107,10 +130,6 @@ class Skill:
             return 0
 
     @property
-    def tool(self) -> str:
-        return self.get("geki-tool")
-
-    @property
     def description(self) -> str:
         value = self.front.get("description")
         return " ".join(str(value).split()) if value else ""
@@ -122,12 +141,6 @@ def skill_paths() -> list[Path]:
 
 def load_skills() -> list[Skill]:
     return [Skill(p) for p in skill_paths()]
-
-
-def load_tool(tool_id: str) -> dict:
-    path = TOOLS / tool_id / "tool.yaml"
-    loaded = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else None
-    return loaded if isinstance(loaded, dict) else {}
 
 
 def run(*cmd: str, cwd: Path = ROOT, check: bool = True) -> str:

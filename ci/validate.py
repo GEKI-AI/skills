@@ -1,4 +1,4 @@
-"""Check every skill and tool against the repo convention.
+"""Check every skill against the repo convention.
 
 This implements the metadata convention of the skills repo and the rules that
 geki-api applies today to `geki-hosts` and `geki-credentials`
@@ -17,11 +17,9 @@ import sys
 import xml.etree.ElementTree as ET
 
 from common import (
-    TOOLS,
     Skill,
     items,
     load_skills,
-    load_tool,
     metadata_value,
     skill_slug_ok,
 )
@@ -33,6 +31,10 @@ HOSTNAME = re.compile(
 )
 MAX_REQUIRES = 20
 MAX_CREDENTIAL_NAME = 255
+TAG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+MAX_TAG = 32
+MAX_TAGS = 10
+MAX_LOGO_BYTES = 64 * 1024
 
 NEVER = {
     "OPENAI_API_KEY",
@@ -82,7 +84,7 @@ ACCESS = {"read", "write", "read, write"}
 AUTH = {"company", "person-oauth", "person-token"}
 KNOWN_KEYS = {
     "version",
-    "geki-tool",
+    "geki-tags",
     "geki-category",
     "geki-access",
     "geki-auth",
@@ -134,11 +136,16 @@ def check_metadata(skill: Skill, errors: list[str]) -> None:
     version = skill.get("version")
     if not version.isdigit() or int(version) < 1:
         errors.append("metadata.version must be an integer string of 1 or more")
-    tool = skill.tool
-    if not tool:
-        errors.append("metadata.geki-tool is required")
-    elif not (TOOLS / tool / "tool.yaml").exists():
-        errors.append(f"geki-tool {tool}: tools/{tool}/tool.yaml is missing")
+    tags = check_listed(skill, "geki-tags", errors)
+    if not tags:
+        errors.append("metadata.geki-tags needs at least one tag")
+    if len(tags) > MAX_TAGS:
+        errors.append(f"metadata.geki-tags takes at most {MAX_TAGS} tags")
+    for tag in tags:
+        if len(tag) > MAX_TAG or not TAG.fullmatch(tag):
+            errors.append(
+                f"geki-tags entry {tag} must be a lowercase slug (a-z, 0-9, single hyphens), at most {MAX_TAG} characters"
+            )
     if skill.get("geki-category") not in CATEGORIES:
         errors.append(f"geki-category must be one of {sorted(CATEGORIES)}")
     if skill.get("geki-access") not in ACCESS:
@@ -266,55 +273,34 @@ def check_skill(skill: Skill, errors: list[str]) -> None:
         errors.append(f"unexpected frontmatter fields: {sorted(extra)}")
     check_metadata(skill, errors)
     check_files(skill, errors)
+    check_logo(skill, errors)
     stdlib_or_declared(skill, errors)
 
 
-def check_tools(errors: dict[str, list[str]]) -> None:
-    for folder in sorted(p for p in TOOLS.iterdir() if p.is_dir()):
-        found: list[str] = errors.setdefault(f"tools/{folder.name}", [])
-        info = load_tool(folder.name)
-        for key in ("name", "category", "website"):
-            if not isinstance(info.get(key), str) or not info[key]:
-                found.append(f"tool.yaml needs {key}")
-        if info.get("category") not in CATEGORIES:
-            found.append("tool.yaml category is not a known category")
-        if isinstance(info.get("website"), str) and not info["website"].startswith("https://"):
-            found.append("tool.yaml website must be an https URL")
-        logo = folder / "logo.svg"
-        if not logo.exists():
-            found.append("logo.svg is missing")
-            continue
-        if logo.stat().st_size > 50_000:
-            found.append("logo.svg is larger than 50 KB")
-        try:
-            root = ET.fromstring(logo.read_text(encoding="utf-8"))
-        except ET.ParseError as exc:
-            found.append(f"logo.svg is not valid XML: {exc}")
-            continue
-        text = logo.read_text(encoding="utf-8").lower()
-        if not root.tag.endswith("svg"):
-            found.append("logo.svg root is not svg")
-        if (
-            "<script" in text
-            or "javascript:" in text
-            or "http://" in text.replace("http://www.w3.org", "")
-        ):
-            found.append("logo.svg has a script or an external reference")
+def check_logo(skill: Skill, errors: list[str]) -> None:
+    logo = skill.path / "assets" / "logo.svg"
+    if not logo.exists():
+        return
+    if logo.stat().st_size > MAX_LOGO_BYTES:
+        errors.append("assets/logo.svg is larger than 64 KB")
+    text = logo.read_text(encoding="utf-8")
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError as exc:
+        errors.append(f"assets/logo.svg is not valid XML: {exc}")
+        return
+    if not root.tag.endswith("svg"):
+        errors.append("assets/logo.svg root is not svg")
+    lower = text.lower()
+    if (
+        "<script" in lower
+        or "javascript:" in lower
+        or "http://" in lower.replace("http://www.w3.org", "")
+    ):
+        errors.append("assets/logo.svg has a script or an external reference")
 
 
-def check_shared_names(skills: list[Skill], errors: dict[str, list[str]]) -> None:
-    by_tool: dict[str, list[Skill]] = {}
-    for skill in skills:
-        by_tool.setdefault(skill.tool, []).append(skill)
-    for tool, group in by_tool.items():
-        for key in ("geki-credentials", "geki-settings", "geki-hosts"):
-            seen = {frozenset(s.list(key)) for s in group}
-            if len(seen) > 1:
-                for skill in group:
-                    errors[f"skills/{skill.name}"].append(
-                        f"all skills of {tool} must use the same {key}"
-                    )
-                break
+def check_unique_names(skills: list[Skill], errors: dict[str, list[str]]) -> None:
     names = [s.name for s in skills]
     if len(names) != len(set(names)):
         errors.setdefault("repo", []).append("duplicate skill names")
@@ -327,8 +313,7 @@ def main(argv: list[str]) -> int:
     for skill in skills:
         check_skill(skill, errors[f"skills/{skill.name}"])
     if not argv:
-        check_shared_names(everything, errors)
-        check_tools(errors)
+        check_unique_names(everything, errors)
     failed = False
     for where, found in errors.items():
         for message in found:

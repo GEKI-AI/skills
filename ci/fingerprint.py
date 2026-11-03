@@ -6,8 +6,7 @@ The hash covers:
 
 - the skill folder, without `README.md` and `CHANGELOG.md` (documentation, and the
   README gets the generated test line)
-- the folder of its tool (`tools/<tool>/`)
-- the mock specs of its tool (its entries in `ci/specs.json`)
+- the mock specs of the skill (the entries of `ci/specs.json` that list it)
 - the versions of Pi and Prism (`ci/pins.env`) and the Python of the empty environment
 - the test model, the judge model and the model base URL
 - the runner code: the files in `RUNNER_FILES`
@@ -23,7 +22,7 @@ import os
 import sys
 from pathlib import Path
 
-from common import ROOT, TOOLS, Skill, load_skills, read_pins
+from common import ROOT, Skill, load_skills, read_pins, specs_for
 
 RUNNER_FILES = [
     "conftest.py",
@@ -43,7 +42,7 @@ DEFAULT_BASE_URL = "https://api.geki.ai/v1"
 
 
 def settings() -> dict[str, str]:
-    """The test settings that are not files: the model, the judge, the tool versions."""
+    """The test settings that are not files: the model, the judge, the versions of Pi and Prism."""
     pins = read_pins()
     return {
         "pi": os.environ.get("PI_VERSION") or pins.get("PI_VERSION", ""),
@@ -68,9 +67,8 @@ def tree_files(folder: Path, skip_docs: bool = False) -> list[Path]:
     return out
 
 
-def specs_of(tool: str) -> str:
-    specs = json.loads((ROOT / "ci" / "specs.json").read_text(encoding="utf-8")).get(tool, [])
-    return json.dumps(specs, sort_keys=True)
+def specs_of(skill: str) -> str:
+    return json.dumps(specs_for(skill), sort_keys=True)
 
 
 def skill_hash(skill: Skill, config: dict[str, str] | None = None) -> str:
@@ -82,11 +80,7 @@ def skill_hash(skill: Skill, config: dict[str, str] | None = None) -> str:
 
     for path in tree_files(skill.path, skip_docs=True):
         add(f"skill:{path.relative_to(skill.path).as_posix()}", path.read_bytes())
-    tool_dir = TOOLS / skill.tool
-    if tool_dir.is_dir():
-        for path in tree_files(tool_dir):
-            add(f"tool:{path.relative_to(tool_dir).as_posix()}", path.read_bytes())
-    add("specs", specs_of(skill.tool).encode())
+    add("specs", specs_of(skill.name).encode())
     for name in RUNNER_FILES:
         path = ROOT / name
         add(f"runner:{name}", path.read_bytes() if path.exists() else b"")

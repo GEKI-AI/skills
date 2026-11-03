@@ -1,13 +1,13 @@
-name: New tool
-description: Ask for a skill that connects an agent to a tool.
-labels: ["new tool"]
+name: New skill
+description: Ask for a skill that connects an agent to a product.
+labels: ["new skill"]
 body:
   - type: input
-    id: tool
+    id: product
     attributes:
-      label: Tool
+      label: Product
       description: Name and website.
-      placeholder: Name of the tool, https://example.com
+      placeholder: Name of the product, https://example.com
     validations:
       required: true
   - type: textarea
@@ -21,7 +21,7 @@ body:
     id: api
     attributes:
       label: API and sign-in
-      description: Link to the API docs or the OpenAPI spec. Does the tool use an own instance address? How do people sign in (API token, OAuth)?
+      description: Link to the API docs or the OpenAPI spec. Does the product use an own instance address? How do people sign in (API token, OAuth)?
     validations:
       required: true
   - type: checkboxes
@@ -29,5 +29,5 @@ body:
     attributes:
       label: Can you help?
       options:
-        - label: I can test the skill with an account of this tool.
+        - label: I can test the skill with an account of this product.
         - label: I want to write the skill (read CONTRIBUTING.md first).
