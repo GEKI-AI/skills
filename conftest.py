@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent / "ci"))
 
-from common import TEST_ENV, Skill  # noqa: E402
+from common import Skill, mock_env  # noqa: E402
 from mockserver import Mock  # noqa: E402
 
 
@@ -70,7 +70,7 @@ def mock(request: pytest.FixtureRequest):
 @pytest.fixture
 def cli(request: pytest.FixtureRequest, mock: Mock):
     skill_dir = _skill_dir(request)
-    return _runner(skill_dir, TEST_ENV[skill_dir.name](mock.url))
+    return _runner(skill_dir, mock_env(skill_dir, mock.url))
 
 
 @pytest.fixture

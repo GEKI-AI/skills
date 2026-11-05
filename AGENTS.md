@@ -28,7 +28,7 @@ Instructions for agents that work on this repository. People start with [README.
 4. Run `python ci/catalog.py` when you changed metadata, `references/setup.md`, or tests. It rewrites the generated parts of the READMEs. Never edit between the `generated:` markers by hand.
 5. Run the local checks of CONTRIBUTING.md.
 
-A new skill copies the folder layout of an existing one, adds its variables to `TEST_ENV` in `ci/common.py`, and its spec to `ci/specs.json` when the vendor publishes an OpenAPI spec.
+A new skill copies the folder layout of an existing one, sets its test variables in `tests/env.json`, and adds its spec to `ci/specs.json` when the vendor publishes an OpenAPI spec.
 
 ## Rules
 

@@ -25,19 +25,18 @@ The workflow never reports green without a test. A missing `GEKI_API_KEY` fails 
 - `skills/<name>/...` is that skill.
 - `ci/specs.json` is every skill whose entries in it changed.
 - Documentation (`*.md` in the root, `docs/`, `.github/`, `LICENSE`, `NOTICE`, `package.json`) is nothing.
-- Everything else (`ci/`, `.forgejo/`, `conftest.py`, new files) is every skill.
+- Everything else (`ci/`, `.forgejo/`, `conftest.py`, new files) is every skill, but the fingerprint then finds that these skills are already verified.
 
 The skills come from the folders of the repo. There is no list in the workflows.
 
 ## Results are remembered by fingerprint
 
-`ci/fingerprint.py` hashes everything a test result depends on:
+A skill is tested again only when the skill changes. `ci/fingerprint.py` hashes what belongs to it:
 
-- the skill folder, without `README.md` and `CHANGELOG.md`
-- the mock specs of the skill in `ci/specs.json`
-- the versions of Pi and Prism (`ci/pins.env`), and the Python version of the empty environment
-- the test model, the judge model and the model base URL
-- the runner code (`RUNNER_FILES` in `ci/fingerprint.py`)
+- the skill folder, without `README.md` and `CHANGELOG.md`. It holds the script, the tests, the fixtures, the agent tasks and the test variables.
+- the mock specs of the skill in `ci/specs.json`, without the list of skills that share them
+
+The runner code, `ci/pins.env` and the model are not in the fingerprint. Their changes do not test the skills again. `ci/tests/` still tests the runner in every run. After a change that can affect the results of the skills, such as a new model, a new Pi version or a change to the mocks, start the workflow `Skills` by hand with `force`. CI saves the new results for the same fingerprints.
 
 When all tests of a skill are green, CI saves a small JSON file `<skill>/<fingerprint>.json` on the branch `test-results`: the fingerprint, the date, the run URL, the model and the pass counts. A skill whose current fingerprint has a green result is reported as "already verified in run N" and is not tested again. A pull request that is merged unchanged therefore costs nothing on `main`.
 
@@ -56,7 +55,7 @@ CI pushes the branch with the built-in token. If Forgejo does not allow that for
 
 ## No nightly run
 
-There is no schedule. A green result stays valid while its fingerprint stays the same: the mocks do not change, and everything else a result depends on is in the fingerprint. Drift of the real APIs is found by the `Real API` workflow, started by hand.
+There is no schedule. A green result stays valid while its fingerprint stays the same. Drift of the real APIs is found by the `Real API` workflow, started by hand.
 
 ## By hand
 
@@ -94,7 +93,7 @@ def test_search(cli, mock):
     assert mock.requests[0]["query"]["query"] == "printer"
 ```
 
-`cli` runs the script of the skill in a clean environment with the variables of the skill pointing to the mock (see `TEST_ENV` in `ci/common.py`, one entry per skill). Set `SKILL_PYTHON` to run the script with another interpreter.
+`cli` runs the script of the skill in a clean environment with the variables of the skill pointing to the mock (see `tests/env.json` in the skill, where `{mock_url}` stands for the address of the mock). Set `SKILL_PYTHON` to run the script with another interpreter.
 
 `python ci/run_scripts.py --skills a,b` is what CI runs. For each skill it starts the Prism mocks, builds a fresh venv of Python 3.11 that holds only the packages the skill declares, and runs its tests with `SKILL_PYTHON` set to that venv. An undeclared import fails. A skill is green only when no test failed and at least one test passed.
 

@@ -111,6 +111,28 @@ def test_tags_come_from_the_metadata():
     assert json.loads(publish.tags_for(skill)) == ["github", "issues", "pull-requests"]
 
 
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        (None, "tests/env.json must exist"),
+        ("{", "tests/env.json must exist"),
+        ('{"A_URL": 1}', "must map variable names to strings"),
+        ('{"A_URL": "http://example.com"}', "needs a variable with {mock_url}"),
+    ],
+)
+def test_validator_checks_the_test_variables(tmp_path, content, expected):
+    target = tmp_path / "skills" / "github"
+    shutil.copytree(SKILLS / "github", target)
+    env = target / "tests" / "env.json"
+    if content is None:
+        env.unlink()
+    else:
+        env.write_text(content, encoding="utf-8")
+    errors: list[str] = []
+    validate.check_files(Skill(target), errors)
+    assert any(expected in error for error in errors), errors
+
+
 def test_validator_checks_the_logo(tmp_path):
     target = tmp_path / "github"
     shutil.copytree(SKILLS / "github", target)

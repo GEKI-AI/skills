@@ -43,7 +43,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
-from common import TEST_ENV, Skill, load_skills
+from common import Skill, load_skills, mock_env
 from fingerprint import DEFAULT_BASE_URL, DEFAULT_MODEL
 from mocks import serve
 from mockserver import Mock
@@ -169,7 +169,7 @@ def run_once(skill: Skill, task: dict, model: str, base_url: str, timeout: int) 
                 "GEKI_API_KEY": os.environ.get("GEKI_API_KEY", ""),
             }
             env.update(write_pi_home(home, model, base_url))
-            env.update(TEST_ENV[skill.name](url))
+            env.update(mock_env(skill.path, url))
             install_skill(skill, home)
             command = [
                 os.environ.get("PI_BIN", "pi"),

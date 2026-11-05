@@ -17,34 +17,10 @@ REPO_URL = "https://github.com/GEKI-AI/skills"
 PINS = ROOT / "ci" / "pins.env"
 
 
-def _confluence(url: str) -> dict[str, str]:
-    return {"CONFLUENCE_URL": url, "CONFLUENCE_TOKEN": "tester@example.com:test-token"}
-
-
-def _zammad(url: str) -> dict[str, str]:
-    return {"ZAMMAD_URL": url, "ZAMMAD_TOKEN": "test-token"}
-
-
-def _forgejo(url: str) -> dict[str, str]:
-    return {"FORGEJO_URL": url, "FORGEJO_TOKEN": "test-token"}
-
-
-def _github(url: str) -> dict[str, str]:
-    return {"GITHUB_BASE_URL": url, "GITHUB_TOKEN": "test-token"}
-
-
-def _hubspot(url: str) -> dict[str, str]:
-    return {"HUBSPOT_BASE_URL": url, "HUBSPOT_TOKEN": "test-token"}
-
-
-TEST_ENV = {
-    "confluence": _confluence,
-    "forgejo": _forgejo,
-    "github": _github,
-    "hubspot": _hubspot,
-    "zammad-create-ticket": _zammad,
-    "zammad-support": _zammad,
-}
+def mock_env(skill_dir: Path, url: str) -> dict[str, str]:
+    """The test variables of a skill: `tests/env.json`, with `{mock_url}` set to the mock."""
+    env = json.loads((skill_dir / "tests" / "env.json").read_text(encoding="utf-8"))
+    return {name: value.replace("{mock_url}", url) for name, value in env.items()}
 
 
 def specs_for(skill: str, text: str | None = None) -> list[dict]:

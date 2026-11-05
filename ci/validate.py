@@ -12,9 +12,11 @@ Usage: python ci/validate.py [skill ...]
 from __future__ import annotations
 
 import ast
+import json
 import re
 import sys
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 from common import (
     Skill,
@@ -200,6 +202,7 @@ def check_files(skill: Skill, errors: list[str]) -> None:
         errors.append("tests/ needs script tests (test_*.py)")
     if not tasks:
         errors.append("tests/tasks/ needs agent task files (*.yaml)")
+    errors.extend(check_test_env(path))
     if skill.list("geki-credentials") and not (path / "references" / "setup.md").exists():
         errors.append("references/setup.md is required when the skill declares credentials")
     tokens = len(skill.text) // 4
@@ -241,6 +244,19 @@ def stdlib_or_declared(skill: Skill, errors: list[str]) -> None:
                     )
         if re.search(r"pip\s+install|npm\s+install|uv\s+pip", source):
             errors.append(f"{script.name}: no install at run time inside a script")
+
+
+def check_test_env(path: Path) -> list[str]:
+    """`tests/env.json`: the variables of the skill in tests, one of them the mock address."""
+    try:
+        env = json.loads((path / "tests" / "env.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ["tests/env.json must exist and be valid JSON"]
+    if not isinstance(env, dict) or not all(isinstance(v, str) for v in env.values()):
+        return ["tests/env.json must map variable names to strings"]
+    if not any("{mock_url}" in value for value in env.values()):
+        return ["tests/env.json needs a variable with {mock_url}"]
+    return []
 
 
 def check_skill(skill: Skill, errors: list[str]) -> None:

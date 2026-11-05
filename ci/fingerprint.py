@@ -2,16 +2,16 @@
 
     python ci/fingerprint.py [skill ...]     print `name hash` for each skill
 
-The hash covers:
+The hash covers only what belongs to the skill:
 
 - the skill folder, without `README.md` and `CHANGELOG.md` (documentation, and the
-  README gets the generated test line)
-- the mock specs of the skill (the entries of `ci/specs.json` that list it)
-- the versions of Pi and Prism (`ci/pins.env`) and the Python of the empty environment
-- the test model, the judge model and the model base URL
-- the runner code: the files in `RUNNER_FILES`
+  README gets the generated test line). The folder holds the script, the tests, the
+  fixtures, the agent tasks and the test variables.
+- the mock specs of the skill: the entries of `ci/specs.json` that list it, without
+  the list of skills, so another skill can share a spec
 
-Change any of these and a green result no longer counts.
+A change to the runner, to the tool versions or to the model does not count. To
+test the skills against such a change, start the workflow `Skills` by hand with `force`.
 """
 
 from __future__ import annotations
@@ -22,18 +22,8 @@ import os
 import sys
 from pathlib import Path
 
-from common import ROOT, Skill, load_skills, read_pins, specs_for
+from common import Skill, load_skills, read_pins, specs_for
 
-RUNNER_FILES = [
-    "conftest.py",
-    "pyproject.toml",
-    "ci/common.py",
-    "ci/mockserver.py",
-    "ci/mocks.py",
-    "ci/agent_test.py",
-    "ci/run_scripts.py",
-    "ci/requirements.txt",
-]
 DOC_FILES = {"README.md", "CHANGELOG.md"}
 SKIP_PARTS = {"__pycache__", ".pytest_cache", ".ruff_cache"}
 EMPTY_PYTHON = "3.11"
@@ -42,7 +32,7 @@ DEFAULT_BASE_URL = "https://api.geki.ai/v1"
 
 
 def settings() -> dict[str, str]:
-    """The test settings that are not files: the model, the judge, the versions of Pi and Prism."""
+    """The test setup that a result records: the model, the judge, the versions of Pi and Prism."""
     pins = read_pins()
     return {
         "pi": os.environ.get("PI_VERSION") or pins.get("PI_VERSION", ""),
@@ -68,11 +58,14 @@ def tree_files(folder: Path, skip_docs: bool = False) -> list[Path]:
 
 
 def specs_of(skill: str) -> str:
-    return json.dumps(specs_for(skill), sort_keys=True)
+    entries = [
+        json.dumps({k: v for k, v in entry.items() if k != "skills"}, sort_keys=True)
+        for entry in specs_for(skill)
+    ]
+    return json.dumps(sorted(entries))
 
 
-def skill_hash(skill: Skill, config: dict[str, str] | None = None) -> str:
-    config = config or settings()
+def skill_hash(skill: Skill) -> str:
     digest = hashlib.sha256()
 
     def add(label: str, data: bytes) -> None:
@@ -81,16 +74,11 @@ def skill_hash(skill: Skill, config: dict[str, str] | None = None) -> str:
     for path in tree_files(skill.path, skip_docs=True):
         add(f"skill:{path.relative_to(skill.path).as_posix()}", path.read_bytes())
     add("specs", specs_of(skill.name).encode())
-    for name in RUNNER_FILES:
-        path = ROOT / name
-        add(f"runner:{name}", path.read_bytes() if path.exists() else b"")
-    add("config", json.dumps(config, sort_keys=True).encode())
     return digest.hexdigest()
 
 
 def hashes(skills: list[Skill] | None = None) -> dict[str, str]:
-    config = settings()
-    return {s.name: skill_hash(s, config) for s in (skills or load_skills())}
+    return {s.name: skill_hash(s) for s in (skills or load_skills())}
 
 
 def main(argv: list[str]) -> int:
