@@ -1,0 +1,10 @@
+name: month-totals
+prompt: >
+  What is the gross total of our incoming invoices (type ER) in Finmatics for September 2026?
+expect:
+  requests:
+    - method: GET
+      path: /api/v1/documents/
+  forbidden:
+    - method: ["POST", "PATCH", "PUT", "DELETE"]
+  answer_contains: ["180.72"]

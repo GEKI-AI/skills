@@ -1,0 +1,303 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/clients/",
+    "body": {
+      "count": 1,
+      "next": null,
+      "previous": null,
+      "results": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "clientName": "Example Trading GmbH",
+          "clientNo": "1000"
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/partners/",
+    "body": {
+      "count": 3,
+      "next": null,
+      "previous": null,
+      "results": [
+        {
+          "id": "bbbbbbbb-0000-4000-8000-000000000001",
+          "client": "11111111-1111-4111-8111-111111111111",
+          "bookingCategory": "ER",
+          "partnerNo": "70001",
+          "partnerName": "Example Supplies Ltd",
+          "city": "Example City",
+          "vat": null,
+          "new": false
+        },
+        {
+          "id": "bbbbbbbb-0000-4000-8000-000000000002",
+          "client": "11111111-1111-4111-8111-111111111111",
+          "bookingCategory": "ER",
+          "partnerNo": "70002",
+          "partnerName": "Example Office KG",
+          "city": null,
+          "vat": null,
+          "new": false
+        },
+        {
+          "id": "bbbbbbbb-0000-4000-8000-000000000003",
+          "client": "22222222-2222-4222-8222-222222222222",
+          "bookingCategory": "ER",
+          "partnerNo": "70003",
+          "partnerName": "Example Supplies Inc",
+          "city": null,
+          "vat": null,
+          "new": false
+        }
+      ]
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/partners/",
+    "status": 201,
+    "body": {
+      "id": "bbbbbbbb-0000-4000-8000-000000000009",
+      "client": "11111111-1111-4111-8111-111111111111",
+      "bookingCategory": "ER",
+      "partnerNo": "70009",
+      "partnerName": "Example Tools AG",
+      "city": "Example City",
+      "vat": null,
+      "new": true
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/documents/",
+    "status": 201,
+    "body": {
+      "id": "aaaaaaaa-0000-4000-8000-000000000009",
+      "client": "11111111-1111-4111-8111-111111111111",
+      "bookingName": "ER",
+      "filename": "invoice.pdf",
+      "status": "processing",
+      "verificationLevel": 0
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/",
+    "query": {
+      "page": "2"
+    },
+    "body": {
+      "count": 5,
+      "next": null,
+      "previous": "http://internal.example.com/api/v1/documents/?page=1",
+      "results": [
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000004",
+          "client": "11111111-1111-4111-8111-111111111111",
+          "bookingName": "AR",
+          "filename": "outgoing.pdf",
+          "status": "finished",
+          "verificationLevel": 20,
+          "invoiceDate": "2026-09-30",
+          "invoiceNo": "AR-7",
+          "partnerName": "Example Customer AG",
+          "currency": "EUR",
+          "totalNetAmount": 1000.0,
+          "totalTaxAmount": 200.0,
+          "totalGrossAmount": 1200.0
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000005",
+          "client": "22222222-2222-4222-8222-222222222222",
+          "bookingName": "ER",
+          "filename": "other-client.pdf",
+          "status": "finished",
+          "verificationLevel": 10,
+          "invoiceDate": "2026-09-15",
+          "invoiceNo": "X-1",
+          "partnerName": "Example Supplies Ltd",
+          "currency": "EUR",
+          "totalNetAmount": 9000.0,
+          "totalTaxAmount": 0.0,
+          "totalGrossAmount": 9000.0
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/",
+    "body": {
+      "count": 5,
+      "next": "http://internal.example.com/api/v1/documents/?page=2",
+      "previous": null,
+      "results": [
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000001",
+          "client": "11111111-1111-4111-8111-111111111111",
+          "bookingName": "ER",
+          "filename": "supplies.pdf",
+          "status": "finished",
+          "verificationLevel": 10,
+          "invoiceDate": "2026-09-01",
+          "invoiceNo": "S-100",
+          "partnerName": "Example Supplies Ltd",
+          "currency": "EUR",
+          "totalNetAmount": null,
+          "totalTaxAmount": 20.02,
+          "totalGrossAmount": 120.12,
+          "items": [
+            {
+              "position": 1,
+              "netAmount": 60.1
+            },
+            {
+              "position": 2,
+              "netAmount": 40.0
+            }
+          ]
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000002",
+          "client": "11111111-1111-4111-8111-111111111111",
+          "bookingName": "ER",
+          "filename": "office.pdf",
+          "status": "finished",
+          "verificationLevel": 20,
+          "invoiceDate": "2026-09-30",
+          "invoiceNo": "O-55",
+          "partnerName": "Example Office KG",
+          "currency": "EUR",
+          "totalNetAmount": null,
+          "totalTaxAmount": "10.10",
+          "totalGrossAmount": "60.60"
+        },
+        {
+          "id": "aaaaaaaa-0000-4000-8000-000000000003",
+          "client": "11111111-1111-4111-8111-111111111111",
+          "bookingName": "ER",
+          "filename": "august.pdf",
+          "status": "finished",
+          "verificationLevel": 10,
+          "invoiceDate": "2026-08-31",
+          "invoiceNo": "S-99",
+          "partnerName": "Example Supplies Ltd",
+          "currency": "EUR",
+          "totalNetAmount": 500.0,
+          "totalTaxAmount": 100.0,
+          "totalGrossAmount": 600.0
+        }
+      ]
+    }
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/documents/{uuid}/",
+    "body": {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001"
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/aaaaaaaa-0000-4000-8000-000000000001/text/",
+    "body": {
+      "results": [
+        {
+          "page_number": 1,
+          "text": "Invoice",
+          "coordinates": {
+            "top": 0.1,
+            "left": 0.1,
+            "right": 0.2,
+            "bottom": 0.12
+          }
+        },
+        {
+          "page_number": 1,
+          "text": "S-100",
+          "coordinates": {
+            "top": 0.102,
+            "left": 0.3,
+            "right": 0.4,
+            "bottom": 0.12
+          }
+        },
+        {
+          "page_number": 1,
+          "text": "Total",
+          "coordinates": {
+            "top": 0.5,
+            "left": 0.1,
+            "right": 0.2,
+            "bottom": 0.52
+          }
+        },
+        {
+          "page_number": 2,
+          "text": "Terms",
+          "coordinates": {
+            "top": 0.1,
+            "left": 0.1,
+            "right": 0.2,
+            "bottom": 0.12
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/aaaaaaaa-0000-4000-8000-000000000001/pdf/",
+    "body": "%PDF-converted"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/aaaaaaaa-0000-4000-8000-000000000001/original/",
+    "body": "%PDF-original"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/aaaaaaaa-0000-4000-8000-000000000001/",
+    "query": {
+      "fields": "all"
+    },
+    "body": {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "bookingName": "ER",
+      "invoiceDate": "2026-09-01",
+      "invoiceNo": "S-100",
+      "partnerName": "Example Supplies Ltd",
+      "totalGrossAmount": 120.12,
+      "verificationLevel": 10,
+      "items": [
+        {
+          "itemText": "Paper",
+          "unitNetAmount": 100.1
+        }
+      ],
+      "totalNetAmount": null
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/documents/aaaaaaaa-0000-4000-8000-000000000001/",
+    "body": {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "bookingName": "ER",
+      "invoiceDate": "2026-09-01",
+      "invoiceNo": "S-100",
+      "partnerName": "Example Supplies Ltd",
+      "totalGrossAmount": 120.12,
+      "verificationLevel": 10,
+      "taxCode": "V20",
+      "comment": null,
+      "dueDate": null,
+      "totalNetAmount": 100.1,
+      "partner": "bbbbbbbb-0000-4000-8000-000000000002"
+    }
+  }
+]

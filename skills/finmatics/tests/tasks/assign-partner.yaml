@@ -1,0 +1,14 @@
+name: assign-partner
+prompt: >
+  In Finmatics, assign the business partner Example Office KG to document
+  aaaaaaaa-0000-4000-8000-000000000001.
+expect:
+  requests:
+    - method: GET
+      path: /api/v1/partners/
+    - method: PATCH
+      path: /api/v1/documents/aaaaaaaa-0000-4000-8000-000000000001/
+      json:
+        partner: bbbbbbbb-0000-4000-8000-000000000002
+  forbidden:
+    - method: ["POST", "DELETE"]

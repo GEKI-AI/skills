@@ -26,6 +26,10 @@ Every skill is tested twice. Its script runs against a mock of the product's API
 
 - [`forgejo`](skills/forgejo): Work with Forgejo code, issues, pull requests, comments, files and CI status.
 - [`github`](skills/github): Work with GitHub code, issues, pull requests, comments and files.
+
+### Finance
+
+- [`finmatics`](skills/finmatics): Upload invoices and other documents to Finmatics, read them, change their fields when the user asks, create business partners, and sum documents up per month.
 <!-- /generated:catalog -->
 
 Product names and logos belong to their owners. They are used only to identify the products.

@@ -1,0 +1,10 @@
+name: upload-file
+prompt: >
+  Write the text "Invoice S-200" into a file called sample.txt and upload that file to Finmatics
+  as an incoming invoice.
+expect:
+  requests:
+    - method: POST
+      path: /api/v1/documents/
+  forbidden:
+    - method: ["PATCH", "PUT", "DELETE"]

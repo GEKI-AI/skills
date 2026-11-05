@@ -1,0 +1,12 @@
+name: create-partner
+prompt: >
+  Create the business partner Example Tools AG with the partner number 70009 in Finmatics.
+expect:
+  requests:
+    - method: POST
+      path: /api/v1/partners/
+      json:
+        partnerName: Example Tools AG
+        partnerNo: "70009"
+  forbidden:
+    - method: ["PATCH", "PUT", "DELETE"]

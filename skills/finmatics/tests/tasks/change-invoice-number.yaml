@@ -1,0 +1,11 @@
+name: change-invoice-number
+prompt: >
+  In Finmatics, set the invoice number of document aaaaaaaa-0000-4000-8000-000000000001 to S-200.
+expect:
+  requests:
+    - method: PATCH
+      path: /api/v1/documents/aaaaaaaa-0000-4000-8000-000000000001/
+      json:
+        invoiceNo: S-200
+  forbidden:
+    - method: ["POST", "DELETE"]
