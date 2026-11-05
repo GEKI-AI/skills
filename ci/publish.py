@@ -20,8 +20,8 @@ without `tests/`. Its `SKILL.md` gets `geki-tested` (the date of the green resul
 `metadata`. The repo files stay as they are. The `tags` field comes from `geki-tags`.
 
 The script sends nothing unless `GEKI_PUBLISH_ENABLED=1` and `GEKI_PUBLISH_KEY` are
-set, and it fails when they are not (`--dry-run` only prints, and with a key it reads
-which skills it would hide). With
+set, and it fails when they are not (`--dry-run` only prints. With a key it reads the
+platform, so its lines say what a real run would do). With
 `--require-verified` a skill without a green test result for its current files
 (`ci/results.py`) stops the whole run before anything is sent.
 
@@ -185,7 +185,7 @@ def tags_for(skill: Skill) -> str:
     return json.dumps(skill.list("geki-tags"))
 
 
-def publish_one(api: Api | None, skill: Skill, tested: str = "") -> str:
+def publish_one(api: Api | None, skill: Skill, tested: str = "", dry_run: bool = False) -> str:
     data = build_zip(skill, tested)
     existing = api.find(skill.name) if api else None
     if existing is None:
@@ -193,12 +193,16 @@ def publish_one(api: Api | None, skill: Skill, tested: str = "") -> str:
     else:
         current = (existing.get("meta") or {}).get("version") or 0
         if int(current) >= skill.version:
-            if api and existing.get("deprecated"):
+            if existing.get("deprecated"):
+                if dry_run:
+                    return f"{skill.name}: back in the repo, the catalog would show it again"
                 api.set_deprecated(existing["id"], False)
                 return f"{skill.name}: back in the repo, the catalog shows it again"
             return f"{skill.name}: platform has version {current}, repo has {skill.version}, skip"
         action = f"new_version after {current}"
     if api is None:
+        return f"{skill.name}@{skill.version}: would upload, no key to read the platform ({len(data)} bytes)"
+    if dry_run:
         return f"{skill.name}@{skill.version}: would {action} ({len(data)} bytes)"
     fields = {"description": skill.description[:1024], "tags": tags_for(skill)}
     if existing is None:
@@ -270,7 +274,13 @@ def main() -> int:
         selected = [s for s in selected if s.name in wanted]
     api = None
     tested: dict[str, str] = {}
-    if not args.dry_run:
+    if args.dry_run:
+        if os.environ.get("GEKI_PUBLISH_KEY"):
+            api = Api(
+                os.environ.get("GEKI_API_URL") or "https://api.geki.ai",
+                os.environ["GEKI_PUBLISH_KEY"],
+            )
+    else:
         if os.environ.get("GEKI_PUBLISH_ENABLED") != "1":
             print("publishing is not enabled: set the variable PUBLISH_ENABLED to true")
             return 1
@@ -299,17 +309,11 @@ def main() -> int:
             (args.out / f"{skill.name}.zip").write_bytes(
                 build_zip(skill, tested.get(skill.name, ""))
             )
-        print(publish_one(api, skill, tested.get(skill.name, "")))
+        print(publish_one(api, skill, tested.get(skill.name, ""), dry_run=args.dry_run))
     if args.only:
         return 0
     if api:
-        hide_removed(api, dry_run=False)
-    elif os.environ.get("GEKI_PUBLISH_KEY"):
-        reader = Api(
-            os.environ.get("GEKI_API_URL") or "https://api.geki.ai",
-            os.environ["GEKI_PUBLISH_KEY"],
-        )
-        hide_removed(reader, dry_run=True)
+        hide_removed(api, dry_run=args.dry_run)
     else:
         print("no key: cannot read which skills left the repo")
     return 0

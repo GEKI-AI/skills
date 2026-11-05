@@ -18,7 +18,7 @@ Without `PUBLISH_ENABLED` or the key, the run fails with a message. It is never 
 A maintainer decides when to publish. An agent takes these steps once a maintainer says so for this release. A green pipeline or an earlier yes is not enough.
 
 1. Start a dry run on `main`: `POST /api/v1/repos/geki/geki-skills/actions/workflows/publish.yml/dispatches` with the JSON body `{"ref": "main", "inputs": {"dry_run": "true"}}`. The token of the maintainer goes into the header `Authorization: token ...`.
-2. Read the log: `GET /api/v1/repos/geki/geki-skills/actions/runs/{id}/jobs`, then `GET /api/v1/repos/geki/geki-skills/actions/jobs/{id}/logs`. The upload lines of a dry run always say `would create`, because that part does not read the platform. The hide lines are real. If a skill would be hidden that nobody expects, stop and ask.
+2. Read the log: `GET /api/v1/repos/geki/geki-skills/actions/runs/{id}/jobs`, then `GET /api/v1/repos/geki/geki-skills/actions/jobs/{id}/logs`. Its lines say what a real run would do. If a skill would be hidden that nobody expects, stop and ask.
 3. Push the tag `publish-YYYY-MM-DD` on the newest commit of `main`, with `-2` at the end if that name is taken.
 4. Read the log of that run the same way, and report each line to the maintainer. A failed run published what comes before the error and hid nothing.
 
@@ -40,7 +40,7 @@ A run never deletes a skill. After all uploads, it looks for skills of the platf
 - A skill that is not shared with `all` stays as it is.
 - A skill that comes back to the repo gets `deprecated=false` in the next run.
 - A run with `only` hides nothing, because it is about the named skills.
-- `dry_run` prints which skills it would hide, if the key is there.
+- `dry_run` prints which skills it would hide, if the key is there. With the key, its upload lines also compare with the platform: `would create`, `would new_version after N`, or `skip`. Without the key it cannot read the platform and says so.
 
 The API has no call for the flag alone: `deprecated` is a field of `POST /v1/skills/{id}`, and that call needs a `mode`. So the run sends `mode=new_version` without a zip, which adds a version with the same files. `overwrite` is not an option, because it is refused while another org pins the skill.
 

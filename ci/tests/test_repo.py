@@ -409,9 +409,33 @@ def test_publish_stops_before_sending_when_a_skill_is_not_verified(monkeypatch, 
     assert "hubspot" in capsys.readouterr().out
 
 
+def test_a_dry_run_says_what_a_real_run_would_do(monkeypatch, capsys):
+    skills = load_skills()
+    same, older, hidden, new = skills[0], skills[1], skills[2], skills[3]
+    api = FakeApi(
+        [
+            {"id": "sk_1", "name": same.name, "meta": {"version": same.version}},
+            {"id": "sk_2", "name": older.name, "meta": {"version": 0}},
+            {
+                "id": "sk_3",
+                "name": hidden.name,
+                "deprecated": True,
+                "meta": {"version": hidden.version},
+            },
+        ]
+    )
+    assert run_main(monkeypatch, api, "--dry-run") == 0
+    assert {call[0] for call in api.calls} == {"GET"}
+    out = capsys.readouterr().out
+    assert f"platform has version {same.version}, repo has {same.version}, skip" in out
+    assert f"{older.name}@{older.version}: would new_version after 0" in out
+    assert f"{hidden.name}: back in the repo, the catalog would show it again" in out
+    assert f"{new.name}@{new.version}: would create and share with all" in out
+
+
 def test_publish_dry_run_prints_without_a_key(monkeypatch, capsys):
     monkeypatch.delenv("GEKI_PUBLISH_ENABLED", raising=False)
     monkeypatch.setattr(sys, "argv", ["publish.py", "--dry-run"])
     assert publish.main() == 0
     out = capsys.readouterr().out
-    assert "would create and share with all" in out
+    assert "would upload, no key to read the platform" in out
