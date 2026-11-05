@@ -273,6 +273,110 @@ def test_publish_finds_the_skill_on_a_later_page():
     assert len(gets) == 3 and "after=sk_1" in gets[1]
 
 
+def test_only_catalog_skills_that_left_the_repo_are_hidden():
+    rows = [
+        {"id": "1", "name": "kept", "shared_with": "all", "deprecated": False},
+        {"id": "2", "name": "gone", "shared_with": "all", "deprecated": False},
+        {"id": "3", "name": "hidden", "shared_with": "all", "deprecated": True},
+        {"id": "4", "name": "internal", "shared_with": "none", "deprecated": False},
+    ]
+    assert [r["name"] for r in publish.removed_from_repo(rows, {"kept"})] == ["gone"]
+
+
+def test_an_empty_repo_hides_nothing():
+    rows = [{"id": "1", "name": "a", "shared_with": "all", "deprecated": False}]
+    with pytest.raises(SystemExit, match="nothing was hidden"):
+        publish.removed_from_repo(rows, set())
+
+
+def test_hiding_adds_a_version_without_files_and_never_overwrites():
+    api = FakeApi([])
+    try:
+        publish.Api(api.url, "key-1").set_deprecated("sk_1", True)
+    finally:
+        api.stop()
+    method, path, body, _auth = api.calls[-1]
+    assert (method, path) == ("POST", "/v1/skills/sk_1")
+    assert b'name="mode"\r\n\r\nnew_version' in body
+    assert b'name="deprecated"\r\n\r\ntrue' in body
+    assert b'name="files"' not in body
+
+
+def test_own_skills_reads_every_page():
+    rows = [{"id": f"sk_{n}", "name": f"s{n}"} for n in range(5)]
+    api = FakeApi(rows, page=2)
+    try:
+        found = publish.Api(api.url, "key-1").own_skills()
+    finally:
+        api.stop()
+    assert [r["id"] for r in found] == [r["id"] for r in rows]
+
+
+def test_a_skill_that_comes_back_with_the_same_version_is_shown_again():
+    skill = next(s for s in load_skills() if s.name == "hubspot")
+    api = FakeApi(
+        [{"id": "sk_1", "name": "hubspot", "deprecated": True, "meta": {"version": skill.version}}]
+    )
+    try:
+        message = publish.publish_one(publish.Api(api.url, "key-1"), skill)
+    finally:
+        api.stop()
+    assert "shows it again" in message
+    _method, path, body, _auth = api.calls[-1]
+    assert path == "/v1/skills/sk_1"
+    assert b'name="deprecated"\r\n\r\nfalse' in body
+    assert b'name="files"' not in body
+
+
+def test_a_skill_that_comes_back_with_a_new_version_is_shown_again():
+    skill = next(s for s in load_skills() if s.name == "hubspot")
+    api = FakeApi([{"id": "sk_1", "name": "hubspot", "deprecated": True, "meta": {"version": 0}}])
+    try:
+        publish.publish_one(publish.Api(api.url, "key-1"), skill)
+    finally:
+        api.stop()
+    body = api.calls[-1][2]
+    assert b'name="deprecated"\r\n\r\nfalse' in body
+    assert b'name="files"' in body
+
+
+def run_main(monkeypatch, api, *args):
+    monkeypatch.setenv("GEKI_PUBLISH_ENABLED", "1")
+    monkeypatch.setenv("GEKI_PUBLISH_KEY", "key-1")
+    monkeypatch.setenv("GEKI_API_URL", api.url)
+    monkeypatch.setattr(sys, "argv", ["publish.py", *args])
+    try:
+        return publish.main()
+    finally:
+        api.stop()
+
+
+def gone_row():
+    return {"id": "sk_gone", "name": "gone", "shared_with": "all", "deprecated": False}
+
+
+def test_a_publish_run_uploads_first_and_then_hides(monkeypatch, capsys):
+    api = FakeApi([gone_row()])
+    assert run_main(monkeypatch, api) == 0
+    posts = [call[1] for call in api.calls if call[0] == "POST"]
+    assert posts[-1] == "/v1/skills/sk_gone"
+    assert posts.count("/v1/skills") == len(load_skills())
+    assert "gone: not in the repo, hidden in the catalog" in capsys.readouterr().out
+
+
+def test_a_run_with_only_hides_nothing(monkeypatch):
+    api = FakeApi([gone_row()])
+    assert run_main(monkeypatch, api, "--only", "hubspot") == 0
+    assert "/v1/skills/sk_gone" not in [call[1] for call in api.calls]
+
+
+def test_a_dry_run_with_a_key_reads_but_sends_nothing(monkeypatch, capsys):
+    api = FakeApi([gone_row()])
+    assert run_main(monkeypatch, api, "--dry-run") == 0
+    assert {call[0] for call in api.calls} == {"GET"}
+    assert "gone: not in the repo, would hide it" in capsys.readouterr().out
+
+
 def test_publish_without_enable_fails_loudly(monkeypatch, capsys):
     monkeypatch.delenv("GEKI_PUBLISH_ENABLED", raising=False)
     monkeypatch.delenv("GEKI_PUBLISH_KEY", raising=False)

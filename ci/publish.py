@@ -11,13 +11,17 @@ For every skill this builds a zip and compares the repo `metadata.version` with 
 - it exists: `POST /v1/skills/{id}` with `mode=new_version`. It never uses
   `overwrite`, so a shared version is never replaced.
 - the platform has the same or a higher version: skipped. A second run does nothing.
+- a shared skill of the platform org has no folder in the repo any more: it gets
+  `deprecated=true`, so the catalog hides it. Pins keep working. It comes after all
+  uploads, and `--only` leaves it out. A skill that comes back gets `deprecated=false`.
 
 The zip has one folder `<name>/` with the skill files (including `assets/logo.svg`),
 without `tests/`. Its `SKILL.md` gets `geki-tested` (the date of the green result) in
 `metadata`. The repo files stay as they are. The `tags` field comes from `geki-tags`.
 
 The script sends nothing unless `GEKI_PUBLISH_ENABLED=1` and `GEKI_PUBLISH_KEY` are
-set, and it fails when they are not (`--dry-run` only prints). With
+set, and it fails when they are not (`--dry-run` only prints, and with a key it reads
+which skills it would hide). With
 `--require-verified` a skill without a green test result for its current files
 (`ci/results.py`) stops the whole run before anything is sent.
 
@@ -39,7 +43,7 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from common import Skill
+from common import Skill, load_skills
 from versions import evaluate
 
 EXCLUDED_DIRS = {"tests", "__pycache__", ".pytest_cache"}
@@ -90,21 +94,24 @@ def build_zip(skill: Skill, tested: str = "") -> bytes:
     return buffer.getvalue()
 
 
-def multipart(fields: dict[str, str], file_name: str, data: bytes) -> tuple[bytes, str]:
+def multipart(
+    fields: dict[str, str], file_name: str | None = None, data: bytes = b""
+) -> tuple[bytes, str]:
     boundary = uuid.uuid4().hex
     parts: list[bytes] = []
     for key, value in fields.items():
         parts.append(
             f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode()
         )
-    parts.append(
-        (
-            f'--{boundary}\r\nContent-Disposition: form-data; name="files"; filename="{file_name}"\r\n'
-            "Content-Type: application/zip\r\n\r\n"
-        ).encode()
-        + data
-        + b"\r\n"
-    )
+    if file_name:
+        parts.append(
+            (
+                f'--{boundary}\r\nContent-Disposition: form-data; name="files"; filename="{file_name}"\r\n'
+                "Content-Type: application/zip\r\n\r\n"
+            ).encode()
+            + data
+            + b"\r\n"
+        )
     parts.append(f"--{boundary}--\r\n".encode())
     return b"".join(parts), f"multipart/form-data; boundary={boundary}"
 
@@ -152,6 +159,27 @@ class Api:
             after = data.get("last_id")
         return None
 
+    def own_skills(self) -> list[dict]:
+        """Every skill of the key's org, also the deprecated ones."""
+        out: list[dict] = []
+        after = None
+        for _ in range(50):
+            params = {"scope": "own", "limit": 100}
+            if after:
+                params["after"] = after
+            data = self.call("GET", "/v1/skills", params)
+            out.extend(r for r in data.get("data", []) if isinstance(r, dict))
+            if not data.get("has_more"):
+                return out
+            after = data.get("last_id")
+        raise SystemExit("GET /v1/skills: too many pages, nothing was hidden")
+
+    def set_deprecated(self, skill_id: str, value: bool) -> None:
+        """The API has no call for the flag alone: this adds a version with the same files."""
+        fields = {"mode": "new_version", "deprecated": "true" if value else "false"}
+        body, ctype = multipart(fields)
+        self.call("POST", f"/v1/skills/{skill_id}", body=body, content_type=ctype)
+
 
 def tags_for(skill: Skill) -> str:
     return json.dumps(skill.list("geki-tags"))
@@ -165,6 +193,9 @@ def publish_one(api: Api | None, skill: Skill, tested: str = "") -> str:
     else:
         current = (existing.get("meta") or {}).get("version") or 0
         if int(current) >= skill.version:
+            if api and existing.get("deprecated"):
+                api.set_deprecated(existing["id"], False)
+                return f"{skill.name}: back in the repo, the catalog shows it again"
             return f"{skill.name}: platform has version {current}, repo has {skill.version}, skip"
         action = f"new_version after {current}"
     if api is None:
@@ -176,11 +207,36 @@ def publish_one(api: Api | None, skill: Skill, tested: str = "") -> str:
         api.call("POST", "/v1/skills", body=body, content_type=ctype)
     else:
         fields["mode"] = "new_version"
+        if existing.get("deprecated"):
+            fields["deprecated"] = "false"
         if existing.get("shared_with", "all") != "all":
             fields["shared_with"] = "all"
         body, ctype = multipart(fields, f"{skill.name}.zip", data)
         api.call("POST", f"/v1/skills/{existing['id']}", body=body, content_type=ctype)
     return f"{skill.name}@{skill.version}: {action}"
+
+
+def removed_from_repo(rows: list[dict], names: set[str]) -> list[dict]:
+    """The catalog skills without a folder in the repo. Skills not shared with all stay."""
+    if not names:
+        raise SystemExit("no skill in the repo, nothing was hidden")
+    return [
+        row
+        for row in rows
+        if row.get("shared_with") == "all"
+        and not row.get("deprecated")
+        and row.get("name") not in names
+    ]
+
+
+def hide_removed(api: Api, *, dry_run: bool) -> None:
+    names = {skill.name for skill in load_skills()}
+    for row in removed_from_repo(api.own_skills(), names):
+        if dry_run:
+            print(f"{row['name']}: not in the repo, would hide it in the catalog")
+        else:
+            api.set_deprecated(row["id"], True)
+            print(f"{row['name']}: not in the repo, hidden in the catalog")
 
 
 def tested_dates(skills: list[Skill], ref: str) -> dict[str, str]:
@@ -244,6 +300,18 @@ def main() -> int:
                 build_zip(skill, tested.get(skill.name, ""))
             )
         print(publish_one(api, skill, tested.get(skill.name, "")))
+    if args.only:
+        return 0
+    if api:
+        hide_removed(api, dry_run=False)
+    elif os.environ.get("GEKI_PUBLISH_KEY"):
+        reader = Api(
+            os.environ.get("GEKI_API_URL") or "https://api.geki.ai",
+            os.environ["GEKI_PUBLISH_KEY"],
+        )
+        hide_removed(reader, dry_run=True)
+    else:
+        print("no key: cannot read which skills left the repo")
     return 0
 
 

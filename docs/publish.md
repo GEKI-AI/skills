@@ -23,13 +23,25 @@ For each skill the script builds a zip with the folder `<name>/` (without `tests
 
 So a tag publishes every skill whose version the platform does not have yet. There is no base commit to choose.
 
+## A skill leaves the repo
+
+A run never deletes a skill. After all uploads, it looks for skills of the platform org that are shared with `all`, are not deprecated, and have no folder in the repo. It sets `deprecated=true` on them:
+
+- The catalog hides the skill. Existing pins keep working, and their bots show the warning `skill_deprecated`.
+- A skill that is not shared with `all` stays as it is.
+- A skill that comes back to the repo gets `deprecated=false` in the next run.
+- A run with `only` hides nothing, because it is about the named skills.
+- `dry_run` prints which skills it would hide, if the key is there.
+
+The API has no call for the flag alone: `deprecated` is a field of `POST /v1/skills/{id}`, and that call needs a `mode`. So the run sends `mode=new_version` without a zip, which adds a version with the same files. `overwrite` is not an option, because it is refused while another org pins the skill.
+
 ## The API
 
 The API is described in `services/geki-api/docs/skills.md` in geki-core, section Shared skills. The script uses:
 
 - `GET /v1/skills?scope=own&q=<name>&limit=100`, with `after=<last_id>` while `has_more` is true. Rows have `id`, `name`, `meta.version` and `shared_with`. The script matches the exact name.
 - `POST /v1/skills` with the multipart fields `files` (the zip), `name`, `description`, `tags` (a JSON list) and `shared_with`.
-- `POST /v1/skills/{id}` with `mode=new_version`, `files`, `description` and `tags`.
+- `POST /v1/skills/{id}` with `mode=new_version`, `files`, `description` and `tags`, or with `mode=new_version` and `deprecated` alone.
 - The zip keeps one folder `<name>/` with `SKILL.md`. geki-api rewrites the frontmatter only when `name` or `description` is missing.
 
 Change `ci/publish.py` and its tests when the API changes.
