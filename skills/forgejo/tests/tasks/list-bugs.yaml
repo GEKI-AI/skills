@@ -1,0 +1,9 @@
+name: list-bugs
+prompt: Which open bugs does acme/web have on our Forgejo? Give me their numbers and titles.
+expect:
+  requests:
+    - method: GET
+      path: /api/v1/repos/acme/web/issues
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["12", "Login fails on Safari"]

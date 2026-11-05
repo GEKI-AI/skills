@@ -10,7 +10,8 @@ prints nothing: its tests use fixtures only.
 
 Spec fixups: `one-of-to-any-of` turns `oneOf` into `anyOf`. Atlassian's
 Confluence v2 spec marks the page body as `oneOf` two schemas that both match,
-so Prism would reject every valid write.
+so Prism would reject every valid write. `no-base-path` removes `basePath`: the
+Forgejo spec is a template and has a placeholder there, its paths come without it.
 """
 
 from __future__ import annotations
@@ -97,6 +98,8 @@ def start(skill: str, work: Path) -> str:
         document = json.loads(raw.read_text(encoding="utf-8"))
         if "one-of-to-any-of" in spec.get("fixups", []):
             document = rename_key(document, "oneOf", "anyOf")
+        if "no-base-path" in spec.get("fixups", []):
+            document.pop("basePath", None)
         path.write_text(json.dumps(document), encoding="utf-8")
         port = free_port()
         log = open(work / f"prism-{skill}-{index}.log", "wb")  # noqa: SIM115

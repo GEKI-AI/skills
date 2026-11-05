@@ -4,5 +4,5 @@ Copyright 2026 GEKI
 This product includes software developed at GEKI (https://geki.ai).
 
 Logos (skills/<name>/assets/logo.svg) identify the products only and belong to their owners:
-- confluence, github, hubspot: Simple Icons 16.36.0 (https://simpleicons.org, CC0-1.0), in the brand colour.
+- confluence, forgejo, github, hubspot: Simple Icons 16.36.0 (https://simpleicons.org, CC0-1.0), in the brand colour.
 - zammad-create-ticket, zammad-support: from the Zammad repository (https://github.com/zammad/zammad, public/assets/images/logo.svg).

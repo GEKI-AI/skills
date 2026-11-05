@@ -1,0 +1,15 @@
+name: create-issue
+prompt: >
+  Create an issue in acme/web on our Forgejo with the title "Login fails" and
+  the label bug. The text is: "The login fails on Safari." Give me the link.
+expect:
+  requests:
+    - method: POST
+      path: /api/v1/repos/acme/web/issues
+      json:
+        title: Login fails
+        labels: [1]
+        body: "re:login fails on Safari"
+  forbidden:
+    - method: ["DELETE"]
+  answer_contains: ["issues/13"]

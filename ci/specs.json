@@ -13,6 +13,13 @@
     "fixups": ["one-of-to-any-of"]
   },
   {
+    "skills": ["forgejo"],
+    "prefix": "/api/v1",
+    "strip": true,
+    "url": "https://codeberg.org/forgejo/forgejo/raw/tag/v17.0.1/templates/swagger/v1_json.tmpl",
+    "fixups": ["no-base-path"]
+  },
+  {
     "skills": ["github"],
     "prefix": "",
     "url": "https://raw.githubusercontent.com/github/rest-api-description/c39a86cf87d2ea0eb82200b4729b867953463fed/descriptions/api.github.com/api.github.com.json"

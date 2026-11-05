@@ -1,0 +1,15 @@
+name: review-pr
+prompt: >
+  What does pull request 30 in acme/web on our Forgejo change, and is its CI
+  green? Name the failing check if there is one.
+expect:
+  requests:
+    - method: GET
+      path: /api/v1/repos/acme/web/pulls/30/files
+    - method: GET
+      path: /api/v1/repos/acme/web/pulls/30.diff
+    - method: GET
+      path: "re:^/api/v1/repos/acme/web/commits/(abc123def456|fix(/|%2F)login)/status$"
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["secure", "ci / tests"]

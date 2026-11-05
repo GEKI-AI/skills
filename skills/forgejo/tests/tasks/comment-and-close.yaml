@@ -1,0 +1,16 @@
+name: comment-and-close
+prompt: >
+  Comment on issue 12 in acme/web on our Forgejo that it is fixed in the next
+  release, then close the issue.
+expect:
+  requests:
+    - method: POST
+      path: /api/v1/repos/acme/web/issues/12/comments
+      json:
+        body: "re:(?i)fixed"
+    - method: PATCH
+      path: /api/v1/repos/acme/web/issues/12
+      json:
+        state: closed
+  forbidden:
+    - method: ["DELETE"]

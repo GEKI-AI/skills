@@ -25,6 +25,10 @@ def _zammad(url: str) -> dict[str, str]:
     return {"ZAMMAD_URL": url, "ZAMMAD_TOKEN": "test-token"}
 
 
+def _forgejo(url: str) -> dict[str, str]:
+    return {"FORGEJO_URL": url, "FORGEJO_TOKEN": "test-token"}
+
+
 def _github(url: str) -> dict[str, str]:
     return {"GITHUB_BASE_URL": url, "GITHUB_TOKEN": "test-token"}
 
@@ -35,6 +39,7 @@ def _hubspot(url: str) -> dict[str, str]:
 
 TEST_ENV = {
     "confluence": _confluence,
+    "forgejo": _forgejo,
     "github": _github,
     "hubspot": _hubspot,
     "zammad-create-ticket": _zammad,
