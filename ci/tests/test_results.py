@@ -27,10 +27,13 @@ def green(name, date, hash_=None):
 
 
 STORED = {
-    "a": green("a", "2026-11-01T00:00:00Z"),
-    "b": green("b", "2026-10-01T00:00:00Z"),
-    "c": green("c", "2026-10-20T00:00:00Z", "old-hash"),
+    "a": {"h-a": green("a", "2026-11-01T00:00:00Z")},
+    "b": {"h-b": green("b", "2026-10-01T00:00:00Z")},
+    "c": {"old-hash": green("c", "2026-10-20T00:00:00Z", "old-hash")},
 }
+
+
+A = STORED["a"]["h-a"]
 
 
 def test_diff_tests_only_affected_skills_without_a_green_result():
@@ -49,9 +52,21 @@ def test_diff_with_nothing_affected_tests_nothing():
 
 
 def test_a_failed_or_missing_status_is_not_verified():
-    stored = {"a": {**STORED["a"], "status": "red"}}
+    stored = {"a": {"h-a": {**STORED["a"]["h-a"], "status": "red"}}}
     plan = results.select(["a"], HASH, stored, mode="diff", candidates=["a"])
     assert plan.todo == ["a"]
+
+
+def test_the_current_fingerprint_counts_even_when_another_is_newer():
+    stored = {
+        "a": {
+            "h-a": green("a", "2026-10-01T00:00:00Z"),
+            "other": green("a", "2026-11-01T00:00:00Z", "other"),
+        }
+    }
+    plan = results.select(["a"], HASH, stored, mode="diff", candidates=["a"])
+    assert plan.todo == []
+    assert plan.verified["a"]["hash"] == "h-a"
 
 
 def test_all_skips_verified_unless_forced():
@@ -65,8 +80,8 @@ def test_all_skips_verified_unless_forced():
 
 
 def test_load_dir_ignores_wrong_names_and_broken_files(tmp_path):
-    (tmp_path / "a.json").write_text(json.dumps(STORED["a"]), encoding="utf-8")
-    (tmp_path / "b.json").write_text(json.dumps(STORED["a"]), encoding="utf-8")
+    (tmp_path / "a.json").write_text(json.dumps(STORED["a"]["h-a"]), encoding="utf-8")
+    (tmp_path / "b.json").write_text(json.dumps(STORED["a"]["h-a"]), encoding="utf-8")
     (tmp_path / "c.json").write_text("{", encoding="utf-8")
     assert list(results.load_dir(tmp_path)) == ["a"]
 
@@ -102,44 +117,127 @@ def run_push(tmp_path, records):
 
 
 def test_push_creates_the_branch_and_later_pushes_keep_other_skills(remote, tmp_path):
-    assert run_push(tmp_path, [STORED["a"]]) == 0
+    assert run_push(tmp_path, [A]) == 0
     assert list(results.load_ref(results.REF)) == ["a"]
-    assert run_push(tmp_path, [STORED["b"]]) == 0
+    assert run_push(tmp_path, [STORED["b"]["h-b"]]) == 0
     stored = results.load_ref(results.REF)
     assert sorted(stored) == ["a", "b"]
-    assert stored["b"]["hash"] == "h-b"
+    assert stored["b"]["h-b"]["hash"] == "h-b"
+    assert "a/h-a.json" in results.git("ls-tree", "-r", "--name-only", results.REF).split()
     files = results.git("ls-tree", "--name-only", results.REF).split()
     assert "TESTED.md" in files and "README.md" in files
     log = results.git("log", "--format=%an %ae %s", results.REF)
     assert "geki-skills CI noreply@geki.ai" in log
 
 
+def test_a_result_of_another_fingerprint_does_not_replace_a_result(remote, tmp_path):
+    run_push(tmp_path, [A])
+    run_push(tmp_path, [green("a", "2026-11-02T00:00:00Z", "from-a-branch")])
+    stored = results.load_ref(results.REF)
+    assert sorted(stored["a"]) == ["from-a-branch", "h-a"]
+    assert results.is_verified("a", {"a": "h-a"}, stored)
+    assert results.is_verified("a", {"a": "from-a-branch"}, stored)
+
+
+def test_two_runs_that_push_at_once_keep_both_results(remote, tmp_path, monkeypatch):
+    run_push(tmp_path, [A])
+    real_git = results.git
+    pushed = []
+
+    def git_with_another_run_first(*args, **kwargs):
+        if args[0] == "push" and not pushed:
+            pushed.append(True)
+            other = tmp_path / "other"
+            url = real_git("remote", "get-url", "origin").strip()
+            real_git("clone", "-q", "-b", results.BRANCH, url, str(other))
+            (other / "b").mkdir()
+            (other / "b" / "h-b.json").write_text(json.dumps(STORED["b"]["h-b"]), encoding="utf-8")
+            real_git("add", "-A", cwd=other)
+            real_git(*results.COMMITTER, "commit", "-qm", "other run", cwd=other)
+            real_git("push", "-q", "origin", results.BRANCH, cwd=other)
+        return real_git(*args, **kwargs)
+
+    monkeypatch.setattr(results, "git", git_with_another_run_first)
+    assert run_push(tmp_path, [green("a", "2026-11-02T00:00:00Z", "second")]) == 0
+    results.fetch_results()
+    stored = results.load_ref(results.REF)
+    assert sorted(stored["a"]) == ["h-a", "second"]
+    assert list(stored["b"]) == ["h-b"]
+
+
+def test_old_results_are_removed_but_never_the_new_one(remote, tmp_path, monkeypatch):
+    monkeypatch.setattr(results, "KEEP_PER_SKILL", 2)
+    run_push(tmp_path, [green("a", "2026-11-03T00:00:00Z", "newest")])
+    run_push(tmp_path, [green("a", "2026-11-02T00:00:00Z", "middle")])
+    run_push(tmp_path, [green("a", "2026-11-01T00:00:00Z", "pushed-last")])
+    assert sorted(results.load_ref(results.REF)["a"]) == ["newest", "pushed-last"]
+
+
+def test_the_old_layout_is_ignored_and_removed(remote, tmp_path):
+    run_push(tmp_path, [A])
+    other = tmp_path / "other"
+    url = results.git("remote", "get-url", "origin").strip()
+    results.git("clone", "-q", "-b", results.BRANCH, url, str(other))
+    (other / "b.json").write_text(json.dumps(STORED["b"]["h-b"]), encoding="utf-8")
+    results.git("add", "-A", cwd=other)
+    results.git(*results.COMMITTER, "commit", "-qm", "old layout", cwd=other)
+    results.git("push", "-q", "origin", results.BRANCH, cwd=other)
+    results.fetch_results()
+    assert list(results.load_ref(results.REF)) == ["a"]
+    run_push(tmp_path, [green("a", "2026-11-02T00:00:00Z", "second")])
+    assert "b.json" not in results.git("ls-tree", "--name-only", results.REF).split()
+
+
+def test_tested_table_shows_the_newest_result():
+    table = results.tested_table(
+        {
+            "a": {
+                "old": green("a", "2026-10-01T00:00:00Z", "old"),
+                "new": green("a", "2026-11-01T00:00:00Z", "new"),
+            }
+        }
+    )
+    assert "2026-11-01" in table and "2026-10-01" not in table
+
+
+def test_export_prefers_the_result_of_the_current_files(remote, tmp_path, monkeypatch):
+    monkeypatch.setattr(results, "hashes", lambda skills=None: dict(HASH))
+    run_push(tmp_path, [A])
+    run_push(tmp_path, [green("a", "2026-11-02T00:00:00Z", "from-a-branch")])
+    run_push(tmp_path, [green("b", "2026-11-03T00:00:00Z", "only-other")])
+    out = tmp_path / "export"
+    assert results.main(["export", str(out)]) == 0
+    exported = results.load_dir(out)
+    assert exported["a"]["hash"] == "h-a"
+    assert exported["b"]["hash"] == "only-other"
+
+
 def test_push_of_the_same_result_changes_nothing(remote, tmp_path, capsys):
-    run_push(tmp_path, [STORED["a"]])
+    run_push(tmp_path, [A])
     before = results.git("rev-parse", results.REF).strip()
-    run_push(tmp_path, [STORED["a"]])
+    run_push(tmp_path, [A])
     assert results.git("rev-parse", results.REF).strip() == before
     assert "nothing to save" in capsys.readouterr().out
 
 
 def test_push_failure_is_a_warning(remote, tmp_path, capsys):
     results.git("remote", "set-url", "origin", str(tmp_path / "missing.git"))
-    assert run_push(tmp_path, [STORED["a"]]) == 0
+    assert run_push(tmp_path, [A]) == 0
     assert "::warning::" in capsys.readouterr().out
 
 
 def test_push_works_again_after_a_failed_push(remote, tmp_path):
     good = results.git("remote", "get-url", "origin").strip()
     results.git("remote", "set-url", "origin", str(tmp_path / "missing.git"))
-    assert run_push(tmp_path, [STORED["a"]]) == 0
+    assert run_push(tmp_path, [A]) == 0
     results.git("remote", "set-url", "origin", good)
-    assert run_push(tmp_path, [STORED["a"]]) == 0
+    assert run_push(tmp_path, [A]) == 0
     assert list(results.load_ref(results.REF)) == ["a"]
 
 
 def test_verified_command(remote, tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(results, "hashes", lambda skills=None: dict(HASH))
-    run_push(tmp_path, [STORED["a"]])
+    run_push(tmp_path, [A])
     assert results.main(["verified", "a"]) == 0
     assert results.main(["verified", "a", "b"]) == 1
     assert "b: no green test result" in capsys.readouterr().out

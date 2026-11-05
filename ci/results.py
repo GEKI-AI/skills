@@ -1,9 +1,13 @@
 """Test results by fingerprint, kept on the branch `test-results`.
 
-Each skill has one small JSON file `<skill>.json` on that branch. It holds the last
-green result: the fingerprint (`ci/fingerprint.py`), the date, the run, the model
-and the pass counts. A skill whose current fingerprint has a green result is
-"already verified" and is not tested again.
+Each green result is one small JSON file `<skill>/<fingerprint>.json` on that branch.
+It holds the fingerprint (`ci/fingerprint.py`), the date, the run, the model and the
+pass counts. A skill whose current fingerprint has a green result is "already
+verified" and is not tested again.
+
+One file per fingerprint means that branches do not overwrite the results of each
+other: a green result on a pull request still counts after a run on another branch.
+Only the newest `KEEP_PER_SKILL` results of a skill are kept.
 
     python ci/results.py plan --mode diff|all [--base REF] [--skills a,b]
                               [--force] [--ref origin/test-results]
@@ -36,6 +40,9 @@ BRANCH = "test-results"
 REF = f"origin/{BRANCH}"
 WORK = ROOT / ".cache" / "results"
 COMMITTER = ["-c", "user.name=geki-skills CI", "-c", "user.email=noreply@geki.ai"]
+KEEP_PER_SKILL = 20
+
+Results = dict[str, dict[str, dict]]
 
 
 def git(*args: str, cwd: Path | None = None, check: bool = True) -> str:
@@ -51,21 +58,49 @@ def fetch_results() -> None:
     git("fetch", "--quiet", "origin", f"+refs/heads/{BRANCH}:refs/remotes/{REF}", check=False)
 
 
-def load_ref(ref: str = REF) -> dict[str, dict]:
-    """The results on a git ref. Empty when the ref does not exist yet."""
+def parse_result(skill: str, fingerprint: str, text: str) -> dict | None:
+    """The record in `<skill>/<fingerprint>.json`, or None when it is broken or misplaced."""
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(data, dict) and data.get("skill") == skill and data.get("hash") == fingerprint:
+        return data
+    return None
+
+
+def load_ref(ref: str = REF) -> Results:
+    """The results on a git ref, by skill and fingerprint. Empty when the ref does not exist yet."""
     if not git("rev-parse", "--verify", "-q", ref, check=False).strip():
         return {}
-    out: dict[str, dict] = {}
-    for name in git("ls-tree", "--name-only", ref).splitlines():
-        if not name.endswith(".json"):
+    out: Results = {}
+    for name in git("ls-tree", "-r", "--name-only", ref).splitlines():
+        parts = name.split("/")
+        if len(parts) != 2 or not parts[1].endswith(".json"):
             continue
+        skill, fingerprint = parts[0], parts[1][:-5]
         try:
-            data = json.loads(git("show", f"{ref}:{name}"))
-        except (json.JSONDecodeError, RuntimeError):
+            data = parse_result(skill, fingerprint, git("show", f"{ref}:{name}"))
+        except RuntimeError:
             continue
-        if isinstance(data, dict) and data.get("skill") == name[:-5]:
-            out[data["skill"]] = data
+        if data:
+            out.setdefault(skill, {})[fingerprint] = data
     return out
+
+
+def load_tree(folder: Path) -> Results:
+    """The results in a checkout of the results branch."""
+    out: Results = {}
+    for path in sorted(folder.glob("*/*.json")):
+        data = parse_result(path.parent.name, path.stem, path.read_text(encoding="utf-8"))
+        if data:
+            out.setdefault(path.parent.name, {})[path.stem] = data
+    return out
+
+
+def newest(records: dict[str, dict]) -> dict:
+    """The newest of the results of one skill."""
+    return max(records.values(), key=lambda r: (str(r.get("date", "")), str(r.get("hash", ""))))
 
 
 def load_dir(folder: Path) -> dict[str, dict]:
@@ -80,11 +115,14 @@ def load_dir(folder: Path) -> dict[str, dict]:
     return out
 
 
-def is_verified(name: str, current: dict[str, str], results: dict[str, dict]) -> bool:
-    result = results.get(name)
-    return bool(
-        result and result.get("status") == "green" and result.get("hash") == current.get(name)
-    )
+def green_result(name: str, current: dict[str, str], results: Results) -> dict | None:
+    """The green result of a skill for its current fingerprint."""
+    result = results.get(name, {}).get(current.get(name, ""))
+    return result if result and result.get("status") == "green" else None
+
+
+def is_verified(name: str, current: dict[str, str], results: Results) -> bool:
+    return green_result(name, current, results) is not None
 
 
 @dataclass
@@ -111,7 +149,7 @@ class Plan:
 def select(
     names: list[str],
     current: dict[str, str],
-    results: dict[str, dict],
+    results: Results,
     *,
     mode: str,
     candidates: list[str] | None = None,
@@ -130,8 +168,8 @@ def select(
         elif force and mode == "all":
             plan.todo.append(name)
             plan.reasons[name] = "forced"
-        elif is_verified(name, current, results):
-            plan.verified[name] = results[name]
+        elif verified := green_result(name, current, results):
+            plan.verified[name] = verified
         else:
             plan.todo.append(name)
             plan.reasons[name] = (
@@ -186,8 +224,10 @@ def cmd_plan(args: argparse.Namespace) -> int:
 def cmd_export(args: argparse.Namespace) -> int:
     folder = Path(args.dir)
     folder.mkdir(parents=True, exist_ok=True)
+    current = hashes()
     fetch_results()
-    for name, data in load_ref(args.ref).items():
+    for name, records in load_ref(args.ref).items():
+        data = green_result(name, current, {name: records}) or newest(records)
         (folder / f"{name}.json").write_text(
             json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
@@ -205,13 +245,13 @@ def cmd_verified(args: argparse.Namespace) -> int:
     return 1 if missing else 0
 
 
-def tested_table(results: dict[str, dict]) -> str:
+def tested_table(results: Results) -> str:
     rows = [
         "| Skill | Verified | Model | Script tests | Agent tasks | Run |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
     for name in sorted(results):
-        r = results[name]
+        r = newest(results[name])
         script, agent = r.get("script", {}), r.get("agent", {})
         rows.append(
             f"| {name} | {str(r.get('date', ''))[:10]} | {r.get('model', '')} "
@@ -225,9 +265,9 @@ BRANCH_README = """# Test results
 
 This branch is written by CI. Do not edit it by hand.
 
-Each `<skill>.json` is the last green test result of one skill: the fingerprint of
-its files and test setup, the date, the model and the pass counts. A skill with a
-green result for its current fingerprint is not tested again. `TESTED.md` lists them.
+Each `<skill>/<fingerprint>.json` is one green test result: the fingerprint, the
+date, the model and the pass counts. A skill with a green result for its current
+fingerprint is not tested again. `TESTED.md` lists the newest result of each skill.
 """
 
 
@@ -248,14 +288,29 @@ def prepare_worktree(folder: Path) -> bool:
     return False
 
 
-def write_results(folder: Path, green: list[dict]) -> None:
-    for record in green:
-        (folder / f"{record['skill']}.json").write_text(
-            json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+def prune(folder: Path, kept: set[str]) -> None:
+    """Remove the oldest results of each skill. A skill that lost one is tested again."""
+    for skill, records in load_tree(folder).items():
+        by_age = sorted(
+            records.values(),
+            key=lambda r: (r["hash"] in kept, str(r.get("date", "")), r["hash"]),
+            reverse=True,
         )
+        for record in by_age[KEEP_PER_SKILL:]:
+            (folder / skill / f"{record['hash']}.json").unlink()
+
+
+def write_results(folder: Path, green: list[dict]) -> None:
+    for path in folder.glob("*.json"):  # the old layout, one file per skill
+        path.unlink()
+    for record in green:
+        path = folder / record["skill"] / f"{record['hash']}.json"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    prune(folder, {record["hash"] for record in green})
     (folder / "README.md").write_text(BRANCH_README, encoding="utf-8")
     (folder / "TESTED.md").write_text(
-        "# Last green results\n\n" + tested_table(load_dir(folder)), encoding="utf-8"
+        "# Last green results\n\n" + tested_table(load_tree(folder)), encoding="utf-8"
     )
 
 

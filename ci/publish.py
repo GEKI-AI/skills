@@ -186,15 +186,15 @@ def publish_one(api: Api | None, skill: Skill, tested: str = "") -> str:
 def tested_dates(skills: list[Skill], ref: str) -> dict[str, str]:
     """The date of the green result for the current files, per verified skill."""
     from fingerprint import hashes
-    from results import fetch_results, is_verified, load_ref
+    from results import fetch_results, green_result, load_ref
 
     fetch_results()
     results = load_ref(ref)
     current = hashes(skills)
     return {
-        s.name: str(results[s.name].get("date", ""))[:10]
+        s.name: str(verified.get("date", ""))[:10]
         for s in skills
-        if is_verified(s.name, current, results)
+        if (verified := green_result(s.name, current, results))
     }
 
 

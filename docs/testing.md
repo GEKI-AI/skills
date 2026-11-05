@@ -39,7 +39,9 @@ The skills come from the folders of the repo. There is no list in the workflows.
 - the test model, the judge model and the model base URL
 - the runner code (`RUNNER_FILES` in `ci/fingerprint.py`)
 
-When all tests of a skill are green, CI saves a small JSON file for the skill on the branch `test-results`: the fingerprint, the date, the run URL, the model and the pass counts. A skill whose current fingerprint has a green result is reported as "already verified in run N" and is not tested again. A pull request that is merged unchanged therefore costs nothing on `main`.
+When all tests of a skill are green, CI saves a small JSON file `<skill>/<fingerprint>.json` on the branch `test-results`: the fingerprint, the date, the run URL, the model and the pass counts. A skill whose current fingerprint has a green result is reported as "already verified in run N" and is not tested again. A pull request that is merged unchanged therefore costs nothing on `main`.
+
+Each fingerprint has its own file, so branches and parallel runs do not overwrite the results of each other. CI keeps the newest 20 results of a skill. A skill whose result was removed is tested once more.
 
 The branch `test-results` is written only by CI. `TESTED.md` on that branch lists the last results. To put the dates into the READMEs, copy the results and regenerate:
 
