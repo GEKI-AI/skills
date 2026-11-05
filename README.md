@@ -15,8 +15,8 @@ Every skill is tested twice. Its script runs against a mock of the product's API
 
 ### Tickets
 
-- [`zammad-read`](skills/zammad-read): Search and read tickets and knowledge base answers in Zammad.
-- [`zammad-write`](skills/zammad-write): Create tickets, reply to tickets and set the ticket state in Zammad.
+- [`zammad-create-ticket`](skills/zammad-create-ticket): Create a ticket in Zammad.
+- [`zammad-support`](skills/zammad-support): Do support work in Zammad.
 
 ### CRM
 

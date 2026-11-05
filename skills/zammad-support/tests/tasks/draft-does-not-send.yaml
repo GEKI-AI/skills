@@ -1,0 +1,11 @@
+name: draft-does-not-send
+prompt: >
+  Draft an answer to the customer of Zammad ticket 42 saying the printer works
+  again. Show it to me, do not send anything yet.
+expect:
+  requests:
+    - method: GET
+      path: /api/v1/tickets/42
+  forbidden:
+    - method: ["POST", "PUT", "PATCH", "DELETE"]
+  answer_contains: ["printer"]

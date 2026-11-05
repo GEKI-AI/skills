@@ -64,8 +64,8 @@ def test_vanilla_pi_discovers_and_runs_a_skill(monkeypatch):
     """Pi finds the skill in ~/.agents/skills and runs its script against the mock."""
     monkeypatch.setenv("PI_BIN", PI)
     monkeypatch.setenv("GEKI_API_KEY", "not-a-real-key")
-    skill = Skill(SKILLS / "zammad-read")
-    script = "$HOME/.agents/skills/zammad-read/scripts/zammad.py"
+    skill = Skill(SKILLS / "zammad-support")
+    script = "$HOME/.agents/skills/zammad-support/scripts/zammad.py"
     fake = FakeLLM(
         [
             {"tool": "bash", "arguments": {"command": f"python3 {script} search printer"}},
@@ -88,7 +88,7 @@ def test_vanilla_pi_discovers_and_runs_a_skill(monkeypatch):
     assert run.passed, run.problems
     first = fake.requests[0]
     prompt = " ".join(str(m.get("content")) for m in first["messages"])
-    assert "zammad-read" in prompt
+    assert "zammad-support" in prompt
     assert "Search and read tickets" in prompt
     assert "test-token" not in prompt
 

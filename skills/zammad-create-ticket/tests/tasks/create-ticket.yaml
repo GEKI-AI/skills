@@ -12,6 +12,7 @@ expect:
         group: Users
         customer: anna@example.com
         article:
+          sender: Customer
           body: "re:printer in room 2 is offline"
   forbidden:
     - method: ["DELETE"]

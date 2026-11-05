@@ -1,0 +1,20 @@
+name: assign-and-tag
+prompt: >
+  Give Zammad ticket 42 to agent@example.com, set the priority to "3 high" and
+  tag it with hardware.
+expect:
+  requests:
+    - method: PUT
+      path: /api/v1/tickets/42
+      json:
+        owner: agent@example.com
+        priority: 3 high
+    - method: POST
+      path: /api/v1/tags/add
+      json:
+        item: hardware
+        o_id: 42
+  forbidden:
+    - method: ["DELETE"]
+    - method: POST
+      path: /api/v1/ticket_articles

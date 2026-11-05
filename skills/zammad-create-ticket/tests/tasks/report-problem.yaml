@@ -1,0 +1,16 @@
+name: report-problem
+prompt: >
+  Please open a ticket in the Zammad group Users: the printer in room 2 is
+  offline. I just need it reported.
+expect:
+  requests:
+    - method: POST
+      path: /api/v1/tickets
+      json:
+        group: Users
+        article:
+          body: "re:(?i)printer"
+  forbidden:
+    - method: ["PUT", "PATCH", "DELETE"]
+    - method: POST
+      path: /api/v1/ticket_articles

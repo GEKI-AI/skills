@@ -37,8 +37,8 @@ TEST_ENV = {
     "confluence": _confluence,
     "github": _github,
     "hubspot": _hubspot,
-    "zammad-read": _zammad,
-    "zammad-write": _zammad,
+    "zammad-create-ticket": _zammad,
+    "zammad-support": _zammad,
 }
 
 

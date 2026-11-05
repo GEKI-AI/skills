@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       skills:
-        description: "Skill names, comma-separated, for example zammad-read. Empty: all skills."
+        description: "Skill names, comma-separated, for example zammad-support. Empty: all skills."
         required: false
         default: ""
 

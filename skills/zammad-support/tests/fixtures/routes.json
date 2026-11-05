@@ -32,7 +32,8 @@
         "id": 101, "ticket_id": 42, "type": "email", "sender": "Customer", "internal": false,
         "from": "Anna Berger <anna@example.com>", "to": "support@example.com", "subject": "Printer offline",
         "content_type": "text/html", "body": "<div>Hello,<br>the printer in room 2 shows <b>offline</b> since Monday.</div>",
-        "created_at": "2026-10-28T08:15:00.000Z"
+        "created_at": "2026-10-28T08:15:00.000Z",
+        "attachments": [{"id": 19, "filename": "photo.png", "size": "2048", "preferences": {"Mime-Type": "image/png"}}]
       },
       {
         "id": 102, "ticket_id": 42, "type": "note", "sender": "Agent", "internal": true,
@@ -72,5 +73,17 @@
         }
       }
     }
-  }
+  },
+  {"method": "POST", "path": "/api/v1/tickets", "json": {"title": "Printer offline"}, "status": 201, "body": {"id": 43, "number": "52043", "title": "Printer offline", "state": "new", "priority": "2 normal", "group": "Users", "customer": "anna@example.com", "owner": "-"}},
+  {"method": "POST", "path": "/api/v1/ticket_articles", "status": 201, "body": {"id": 104, "ticket_id": 42, "type": "note", "internal": true, "to": null, "cc": null, "body": "We replaced the toner."}},
+  {"method": "PUT", "path": "/api/v1/tickets/{id}", "status": 200, "body": {"id": 42, "number": "52042", "title": "Printer offline", "state": "closed", "priority": "2 normal", "group": "Users", "customer": "anna@example.com", "owner": "agent@example.com"}},
+  {"method": "GET", "path": "/api/v1/ticket_states", "body": [{"id": 1, "name": "new", "active": true}, {"id": 2, "name": "open", "active": true}, {"id": 3, "name": "pending reminder", "active": true}, {"id": 4, "name": "closed", "active": true}]},
+  {"method": "GET", "path": "/api/v1/ticket_priorities", "body": [{"id": 1, "name": "1 low", "active": true}, {"id": 2, "name": "2 normal", "active": true}, {"id": 3, "name": "3 high", "active": true}]},
+  {"method": "GET", "path": "/api/v1/users/search", "body": [{"id": 5, "login": "anna@example.com", "firstname": "Anna", "lastname": "Berger", "email": "anna@example.com", "phone": "+43 1 000000", "organization": "Example Ltd", "active": true, "password": ""}]},
+  {"method": "GET", "path": "/api/v1/ticket_attachment/{ticket}/{article}/{attachment}", "body": {"fixture": "attachment"}},
+  {"method": "GET", "path": "/api/v1/tags", "body": {"tags": ["printer", "hardware"]}},
+  {"method": "POST", "path": "/api/v1/tags/add", "status": 201, "body": true},
+  {"method": "DELETE", "path": "/api/v1/tags/remove", "body": true},
+  {"method": "GET", "path": "/api/v1/links", "body": {"links": [{"link_type": "normal", "link_object": "Ticket", "link_object_value": 37}], "assets": {"Ticket": {"37": {"id": 37, "number": "52037", "title": "Printer toner empty"}}}}},
+  {"method": "POST", "path": "/api/v1/links/add", "status": 201, "body": {"id": 11, "link_type_id": 1, "link_object_target_value": 42}}
 ]

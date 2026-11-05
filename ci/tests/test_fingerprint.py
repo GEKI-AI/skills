@@ -15,7 +15,7 @@ from common import ROOT, SKILLS, Skill  # noqa: E402
 def copy(tmp_path, monkeypatch):
     """A copy of one skill, with the module pointed at the copy."""
     (tmp_path / "skills").mkdir()
-    shutil.copytree(SKILLS / "zammad-read", tmp_path / "skills" / "zammad-read")
+    shutil.copytree(SKILLS / "zammad-support", tmp_path / "skills" / "zammad-support")
     monkeypatch.setattr(fingerprint, "RUNNER_FILES", [])
     monkeypatch.setattr(fingerprint, "specs_of", lambda skill: "[]")
     return tmp_path
@@ -23,7 +23,7 @@ def copy(tmp_path, monkeypatch):
 
 def value(root: Path, **config) -> str:
     base = {"pi": "1", "prism": "1", "python": "3.11", "model": "m", "base_url": "u", "judge": ""}
-    return fingerprint.skill_hash(Skill(root / "skills" / "zammad-read"), {**base, **config})
+    return fingerprint.skill_hash(Skill(root / "skills" / "zammad-support"), {**base, **config})
 
 
 def test_the_hash_is_stable(copy):
@@ -32,14 +32,14 @@ def test_the_hash_is_stable(copy):
 
 def test_a_script_fixture_or_test_change_changes_the_hash(copy):
     before = value(copy)
-    script = copy / "skills" / "zammad-read" / "scripts" / "zammad.py"
+    script = copy / "skills" / "zammad-support" / "scripts" / "zammad.py"
     script.write_text(script.read_text(encoding="utf-8") + "\n# x\n", encoding="utf-8")
     assert value(copy) != before
 
 
 def test_readme_and_changelog_do_not_change_the_hash(copy):
     before = value(copy)
-    folder = copy / "skills" / "zammad-read"
+    folder = copy / "skills" / "zammad-support"
     (folder / "README.md").write_text("changed", encoding="utf-8")
     (folder / "CHANGELOG.md").write_text("changed", encoding="utf-8")
     assert value(copy) == before
@@ -47,7 +47,9 @@ def test_readme_and_changelog_do_not_change_the_hash(copy):
 
 def test_the_logo_changes_the_hash(copy):
     before = value(copy)
-    (copy / "skills" / "zammad-read" / "assets" / "logo.svg").write_text("<svg/>", encoding="utf-8")
+    (copy / "skills" / "zammad-support" / "assets" / "logo.svg").write_text(
+        "<svg/>", encoding="utf-8"
+    )
     assert value(copy) != before
 
 
@@ -74,7 +76,7 @@ def test_runner_code_changes_the_hash(copy, monkeypatch):
 
 def test_specs_of_a_skill_are_its_own_entries():
     assert json.loads(fingerprint.specs_of("github"))[0]["skills"] == ["github"]
-    assert fingerprint.specs_of("zammad-read") == "[]"
+    assert fingerprint.specs_of("zammad-support") == "[]"
 
 
 def test_every_runner_file_exists():
