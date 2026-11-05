@@ -293,6 +293,14 @@ def patches_by_file(diff: str, names: list[str]) -> dict[str, str]:
     return out
 
 
+def cmd_pr_create(args: argparse.Namespace) -> None:
+    body = {"head": args.head, "base": args.base, "title": args.title}
+    text = read_text(args)
+    if text is not None:
+        body["body"] = text
+    print(json.dumps(pr_row(call("POST", f"{repo_path(args.repo)}/pulls", body=body))))
+
+
 def cmd_pr_files(args: argparse.Namespace) -> None:
     path = f"{repo_path(args.repo)}/pulls/{args.number}"
     files = call("GET", f"{path}/files", {"limit": args.limit})
@@ -449,6 +457,11 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--state", choices=["open", "closed", "all"], default="open")
     paging(p)
     add("pr", cmd_pr, "read a pull request", number=True)
+    p = add("pr-create", cmd_pr_create, "create a pull request from a pushed branch")
+    p.add_argument("--head", required=True, help="the pushed branch")
+    p.add_argument("--base", required=True, help="the branch to merge into")
+    p.add_argument("--title", required=True)
+    text(p)
     p = add("pr-files", cmd_pr_files, "files changed by a pull request", number=True)
     p.add_argument("--limit", type=int, default=50)
     p.add_argument("--max-patch", type=int, default=4000, help="characters of diff per file")
