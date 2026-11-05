@@ -81,5 +81,9 @@
       "searchDuration": 12,
       "_links": {"base": "https://acme.atlassian.net/wiki", "context": "/wiki"}
     }
-  }
+  },
+  {"method": "POST", "path": "/wiki/api/v2/pages", "json": {"spaceId": "5001", "status": "current"}, "status": 200, "body": {"id": "10077", "status": "current", "title": "Meeting notes 2026-11-02", "spaceId": "5001", "version": {"number": 1}, "_links": {"webui": "/spaces/DOCS/pages/10077/Meeting+notes+2026-11-02", "base": "https://acme.atlassian.net/wiki"}}},
+  {"method": "POST", "path": "/wiki/api/v2/pages", "json": {"spaceId": "5001", "status": "draft"}, "status": 200, "body": {"id": "10078", "status": "draft", "title": "Draft", "spaceId": "5001", "version": {"number": 1}, "_links": {"webui": "/spaces/DOCS/pages/10078/Draft", "base": "https://acme.atlassian.net/wiki"}}},
+  {"method": "PUT", "path": "/wiki/api/v2/pages/{id}", "status": 200, "body": {"id": "10001", "status": "current", "title": "Onboarding guide", "spaceId": "5001", "version": {"number": 5}, "_links": {"webui": "/spaces/DOCS/pages/10001/Onboarding+guide", "base": "https://acme.atlassian.net/wiki"}}},
+  {"method": "POST", "path": "/wiki/api/v2/footer-comments", "status": 200, "body": {"id": "20001", "pageId": "10001", "status": "current"}}
 ]

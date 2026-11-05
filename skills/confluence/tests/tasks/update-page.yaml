@@ -10,6 +10,6 @@ expect:
         version:
           number: 5
         body:
-          value: "re:(?s)Old text.*Ask IT for the VPN profile"
+          value: "re:(?s)Welcome to.*Ask IT for the VPN profile"
   forbidden:
     - method: ["DELETE"]

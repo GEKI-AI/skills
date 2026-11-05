@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import affected  # noqa: E402
-from common import SPECS  # noqa: E402
+from common import SKILLS, SPECS  # noqa: E402
 
 NAMES = ["confluence-read", "confluence-write", "zammad-read", "github"]
 
@@ -69,7 +69,7 @@ def test_mixed_changes_add_up():
 def test_unknown_base_means_every_skill(monkeypatch):
     monkeypatch.setattr(affected, "changed_paths", lambda base: None)
     names, why = affected.affected_since("0000000")
-    assert names == sorted(names) and len(names) >= 6
+    assert names == sorted(path.parent.name for path in SKILLS.glob("*/SKILL.md"))
     assert "unknown" in why
 
 

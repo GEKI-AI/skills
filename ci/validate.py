@@ -181,7 +181,7 @@ def check_metadata(skill: Skill, errors: list[str]) -> None:
         if skill.get(key) and not skill.get(key).startswith("https://"):
             errors.append(f"{key} must be an https URL")
     if skill.get("geki-origin") and not re.fullmatch(r"[a-z0-9-]+@\d+", skill.get("geki-origin")):
-        errors.append("geki-origin must look like confluence-read@3")
+        errors.append("geki-origin must look like confluence@3")
     for key in ("geki-python", "geki-npm", "geki-system"):
         check_listed(skill, key, errors)
 

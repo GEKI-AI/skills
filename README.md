@@ -11,8 +11,7 @@ Every skill is tested twice. Its script runs against a mock of the product's API
 <!-- generated:catalog -->
 ### Knowledge
 
-- [`confluence-read`](skills/confluence-read): Search and read Confluence Cloud.
-- [`confluence-write`](skills/confluence-write): Create and update pages in Confluence Cloud and add comments.
+- [`confluence`](skills/confluence): Search, read and change Confluence Cloud.
 
 ### Tickets
 

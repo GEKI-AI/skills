@@ -34,8 +34,7 @@ def _hubspot(url: str) -> dict[str, str]:
 
 
 TEST_ENV = {
-    "confluence-read": _confluence,
-    "confluence-write": _confluence,
+    "confluence": _confluence,
     "github": _github,
     "hubspot": _hubspot,
     "zammad-read": _zammad,

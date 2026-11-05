@@ -1,13 +1,13 @@
 [
   {
-    "skills": ["confluence-read", "confluence-write"],
+    "skills": ["confluence"],
     "prefix": "/wiki/api/v2",
     "strip": true,
     "url": "https://dac-static.atlassian.com/cloud/confluence/openapi-v2.v3.json",
     "fixups": ["one-of-to-any-of"]
   },
   {
-    "skills": ["confluence-read", "confluence-write"],
+    "skills": ["confluence"],
     "prefix": "/wiki/rest/api",
     "url": "https://dac-static.atlassian.com/cloud/confluence/swagger.v3.json",
     "fixups": ["one-of-to-any-of"]

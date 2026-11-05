@@ -27,12 +27,12 @@ def test_readmes_are_up_to_date():
         assert path.read_text(encoding="utf-8") == text, f"run python ci/catalog.py: {path}"
 
 
-VERSION = f'version: "{Skill(SKILLS / "confluence-read").version}"'
+VERSION = f'version: "{Skill(SKILLS / "confluence").version}"'
 
 
 def broken(tmp_path: Path, old: str, new: str) -> list[str]:
-    target = tmp_path / "confluence-read"
-    shutil.copytree(SKILLS / "confluence-read", target)
+    target = tmp_path / "confluence"
+    shutil.copytree(SKILLS / "confluence", target)
     skill_md = target / "SKILL.md"
     skill_md.write_text(skill_md.read_text(encoding="utf-8").replace(old, new, 1), encoding="utf-8")
     errors: list[str] = []
@@ -69,7 +69,7 @@ def broken(tmp_path: Path, old: str, new: str) -> list[str]:
         ("geki-tags: confluence, wiki, atlassian", "geki-tags: Confluence", "geki-tags entry"),
         ("geki-tags: confluence, wiki, atlassian", "geki-tags: wiki page", "geki-tags entry"),
         ("license: Apache-2.0", "license: Proprietary", "license must be one of"),
-        ("name: confluence-read", "name: other-name", "name must equal the folder name"),
+        ("name: confluence", "name: other-name", "name must equal the folder name"),
     ],
 )
 def test_validator_rejects(tmp_path, old, new, expected):
@@ -77,8 +77,8 @@ def test_validator_rejects(tmp_path, old, new, expected):
 
 
 def test_script_cannot_import_an_undeclared_package(tmp_path):
-    target = tmp_path / "confluence-read"
-    shutil.copytree(SKILLS / "confluence-read", target)
+    target = tmp_path / "confluence"
+    shutil.copytree(SKILLS / "confluence", target)
     script = target / "scripts" / "confluence.py"
     script.write_text("import requests\n" + script.read_text(encoding="utf-8"), encoding="utf-8")
     errors: list[str] = []
