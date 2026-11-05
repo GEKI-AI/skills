@@ -64,6 +64,16 @@
     }
   },
   {
+    "method": "POST",
+    "path": "/repos/{owner}/{repo}/pulls",
+    "status": 201,
+    "body": {
+      "number": 31, "title": "Fix the login", "state": "open", "draft": false, "merged": false, "user": {"login": "ben"},
+      "head": {"ref": "fix/login"}, "base": {"ref": "main"}, "html_url": "https://github.com/acme/web/pull/31",
+      "updated_at": "2026-10-31T09:00:00Z"
+    }
+  },
+  {
     "method": "GET",
     "path": "/repos/{owner}/{repo}/pulls",
     "body": [

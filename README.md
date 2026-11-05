@@ -25,7 +25,7 @@ Every skill is tested twice. Its script runs against a mock of the product's API
 ### Development
 
 - [`forgejo`](skills/forgejo): Work with Forgejo code, issues, pull requests, comments, files and CI status.
-- [`github`](skills/github): Work with GitHub issues, pull requests, comments and files.
+- [`github`](skills/github): Work with GitHub code, issues, pull requests, comments and files.
 <!-- /generated:catalog -->
 
 Product names and logos belong to their owners. They are used only to identify the products.

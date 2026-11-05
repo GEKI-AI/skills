@@ -1,5 +1,9 @@
 # Changelog
 
+## 3
+
+- Explains how to clone and push with git and the token. New command `pr-create`. New allowed host `github.com`. Pushing needs "Contents: Read and write".
+
 ## 2
 
 - Tags in `geki-tags`, the logo in `assets/logo.svg`.

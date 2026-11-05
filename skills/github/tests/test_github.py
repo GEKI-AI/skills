@@ -1,3 +1,8 @@
+import os
+import shlex
+import subprocess
+from pathlib import Path
+
 import pytest
 
 
@@ -138,3 +143,58 @@ def test_real_read_of_a_public_repo(real_cli):
     issues = real_cli("issues", "octocat/Hello-World", "--limit", "1")
     assert issues.code == 0, issues.err
     assert "results" in issues.json
+
+
+def test_pr_create_sends_branches_title_and_text(cli, mock):
+    result = cli(
+        "pr-create",
+        "acme/web",
+        "--head",
+        "fix/login",
+        "--base",
+        "main",
+        "--title",
+        "Fix the login",
+        "--body",
+        "Line one\n\nLine two",
+    )
+    assert result.code == 0, result.err
+    assert result.json["number"] == 31
+    assert result.json["url"].endswith("/pull/31")
+    post = mock.requests[-1]
+    assert (post["method"], post["path"]) == ("POST", "/repos/acme/web/pulls")
+    assert post["body"] == {
+        "head": "fix/login",
+        "base": "main",
+        "title": "Fix the login",
+        "body": "Line one\n\nLine two",
+    }
+
+
+def test_pr_create_without_text_sends_no_body(cli, mock):
+    args = ("pr-create", "acme/web", "--head", "fix/login", "--base", "main", "--title", "x")
+    assert cli(*args).code == 0
+    assert "body" not in mock.requests[-1]["body"]
+
+
+def test_the_clone_line_gives_git_the_token_and_keeps_it_out_of_the_config(tmp_path):
+    skill = Path(__file__).resolve().parents[1] / "SKILL.md"
+    line = next(x for x in skill.read_text().splitlines() if x.startswith("git clone "))
+    bare = tmp_path / "web.git"
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {**os.environ, "HOME": str(home), "GITHUB_TOKEN": "test-token"}
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True, env=env)
+    clone = tmp_path / "web"
+    subprocess.run([*shlex.split(line)[:-1], str(bare), str(clone)], check=True, env=env)
+    assert "test-token" not in (clone / ".git" / "config").read_text()
+    filled = subprocess.run(
+        ["git", "credential", "fill"],
+        cwd=clone,
+        input="protocol=https\nhost=github.com\n\n",
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "password=test-token\n" in filled.stdout

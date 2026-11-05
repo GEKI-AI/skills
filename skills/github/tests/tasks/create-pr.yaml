@@ -1,0 +1,17 @@
+name: create-pr
+prompt: >
+  The branch fix/login in the GitHub repository acme/web is already pushed. Open
+  a pull request into main with the title "Fix the login". The text is: "Fixes
+  the cookie flag." Give me the link.
+expect:
+  requests:
+    - method: POST
+      path: /repos/acme/web/pulls
+      json:
+        head: fix/login
+        base: main
+        title: Fix the login
+        body: "re:cookie flag"
+  forbidden:
+    - method: ["DELETE"]
+  answer_contains: ["pull/31"]
