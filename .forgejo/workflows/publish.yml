@@ -20,13 +20,15 @@ on:
   workflow_dispatch:
     inputs:
       only:
+        type: string
         description: "Skill names, comma-separated. Empty: all skills."
         required: false
         default: ""
       dry_run:
+        type: boolean
         description: "Only print what would be published."
         required: false
-        default: "false"
+        default: false
 
 concurrency:
   group: publish

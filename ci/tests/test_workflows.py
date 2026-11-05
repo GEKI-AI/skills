@@ -29,6 +29,14 @@ def test_the_workflows_are_for_forgejo_only():
             assert job["runs-on"] == "datenhof-ci"
 
 
+def test_every_input_of_a_workflow_has_a_type():
+    """Forgejo shows "Invalid input type" in the form when the type is missing."""
+    for path in WORKFLOWS.glob("*.yml"):
+        inputs = load(path.name)["on"].get("workflow_dispatch", {}).get("inputs", {})
+        for name, config in inputs.items():
+            assert config.get("type") in {"string", "boolean"}, f"{path.name}: {name}"
+
+
 def test_the_one_aggregate_check_is_skills_tests():
     data = load("skills.yml")
     assert data["name"] == "Skills"

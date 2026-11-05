@@ -21,13 +21,15 @@ on:
   workflow_dispatch:
     inputs:
       skills:
+        type: string
         description: "Skill names, comma-separated. Empty: all skills."
         required: false
         default: ""
       force:
+        type: boolean
         description: "Test even when a green result exists for the files."
         required: false
-        default: "false"
+        default: false
 
 concurrency:
   group: skills-${{ github.event_name }}-${{ github.ref }}
