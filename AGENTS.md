@@ -45,5 +45,5 @@ A new skill copies the folder layout of an existing one, sets its test variables
 - Conventional Commits: `feat(<skill>): ...`, `fix(<skill>): ...`, `fix(ci): ...`, `docs: ...`. One change per PR.
 - No tool attribution in commits or PR descriptions: no co-author trailers of AI tools and no "Generated with" lines. The mirror makes them public.
 - A squash merge uses the PR title and description as the commit message (`.forgejo/default_merge_message/SQUASH_TEMPLATE.md`). Write both as the final commit.
-- `main` requires the check `Skills / tests (pull_request)`, no approval. A maintainer merges when it is green.
-- A merge publishes nothing. Publishing is a `publish-*` tag, set only by a maintainer. Never push such a tag yourself.
+- `main` requires the check `Skills / tests (pull_request)`, no approval. A maintainer merges when it is green, or an agent when a maintainer says so for this pull request.
+- A merge publishes nothing. Publishing is its own step, a `publish-*` tag. A maintainer decides when it happens. Never publish on your own. When a maintainer says so for this release, follow [An agent publishes](docs/publish.md#an-agent-publishes).

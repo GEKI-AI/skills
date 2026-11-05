@@ -2,7 +2,7 @@
 
 Publishing is a tag. Push a tag that starts with `publish-` on a commit of `main`, for example `publish-2026-11-03`. The workflow `publish.yml` then runs `ci/publish.py`. A merge to `main` publishes nothing. You can also start the workflow by hand on `main`. Its inputs are `only` (skill names) and `dry_run`.
 
-Protect the tag pattern `publish-*` in the repository settings, so only maintainers can create it. The tag is the approval.
+Protect the tag pattern `publish-*` in the repository settings, so only maintainers can create it. The tag is the approval: a maintainer sets it, or an agent on the word of a maintainer.
 
 ## Needs
 
@@ -12,6 +12,15 @@ Protect the tag pattern `publish-*` in the repository settings, so only maintain
 - Unless the variable `PUBLISH_REQUIRE_VERIFIED` is `false`, every skill must have a green test result for its current files on the branch `test-results` (see [testing.md](testing.md)). Otherwise nothing is published.
 
 Without `PUBLISH_ENABLED` or the key, the run fails with a message. It is never silently green. Only `dry_run` works without them.
+
+## An agent publishes
+
+A maintainer decides when to publish. An agent takes these steps once a maintainer says so for this release. A green pipeline or an earlier yes is not enough.
+
+1. Start a dry run on `main`: `POST /api/v1/repos/geki/geki-skills/actions/workflows/publish.yml/dispatches` with the JSON body `{"ref": "main", "inputs": {"dry_run": "true"}}`. The token of the maintainer goes into the header `Authorization: token ...`.
+2. Read the log: `GET /api/v1/repos/geki/geki-skills/actions/runs/{id}/jobs`, then `GET /api/v1/repos/geki/geki-skills/actions/jobs/{id}/logs`. The upload lines of a dry run always say `would create`, because that part does not read the platform. The hide lines are real. If a skill would be hidden that nobody expects, stop and ask.
+3. Push the tag `publish-YYYY-MM-DD` on the newest commit of `main`, with `-2` at the end if that name is taken.
+4. Read the log of that run the same way, and report each line to the maintainer. A failed run published what comes before the error and hid nothing.
 
 ## What it does
 
