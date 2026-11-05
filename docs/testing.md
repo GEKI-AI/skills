@@ -50,7 +50,7 @@ python ci/catalog.py --results .cache/results
 
 Commit the changed READMEs in a normal pull request. CI cannot push to `main`.
 
-CI pushes the branch with the built-in token (`contents: write`). If Forgejo does not allow that for a run, add the secret `RESULTS_TOKEN` (a token of a CI user with write access to this repository). When a push fails, CI prints a warning and the next run tests the skill again.
+CI pushes the branch with the built-in token. If Forgejo does not allow that for a run, add the secret `RESULTS_TOKEN` (a token of a CI user with write access to this repository). When a push fails, CI prints a warning and the next run tests the skill again.
 
 ## No nightly run
 

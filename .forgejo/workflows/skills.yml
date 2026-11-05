@@ -29,9 +29,6 @@ on:
         required: false
         default: "false"
 
-permissions:
-  contents: read
-
 concurrency:
   group: skills-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -193,8 +190,6 @@ jobs:
     if: ${{ always() }}
     runs-on: datenhof-ci
     timeout-minutes: 10
-    permissions:
-      contents: write
     env:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
       COMMIT: ${{ github.sha }}
