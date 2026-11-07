@@ -2,6 +2,10 @@
 
 Finmatics from your agent. Upload invoices and other documents, read them, change their fields when you ask, create business partners, and get the totals of a month. It does not check documents, does not delete them and does not book or export anything.
 
+<!-- generated:geki -->
+**On GEKI Companybots** this skill is in the skill catalog of every organization. [Register](https://console.geki.ai/register?landing=skill-finmatics&utm_source=github&utm_medium=readme&utm_campaign=skills&utm_content=finmatics) and get free starting credits.
+<!-- /generated:geki -->
+
 ## Example requests
 
 - "Upload invoice.pdf to Finmatics."

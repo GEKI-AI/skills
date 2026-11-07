@@ -2,6 +2,10 @@
 
 Search, read and change Confluence Cloud from your agent. Find pages with CQL or plain text, read a page as Markdown, browse spaces and child pages, create and update pages, add comments. You give new text as Markdown and the script converts it. Writing changes real content.
 
+<!-- generated:geki -->
+**On GEKI Companybots** this skill is in the skill catalog of every organization. Skill page (in German): [geki.ai/skills/confluence-mit-ki-automatisieren](https://geki.ai/skills/confluence-mit-ki-automatisieren/). [Register](https://console.geki.ai/register?landing=skill-confluence-mit-ki-automatisieren&utm_source=github&utm_medium=readme&utm_campaign=skills&utm_content=confluence) and get free starting credits.
+<!-- /generated:geki -->
+
 ## Example requests
 
 - "Find our onboarding guide in Confluence and summarise the first week."

@@ -6,6 +6,8 @@ Tested [Agent Skills](https://agentskills.io) for [Pi](https://pi.dev) and for o
 
 Every skill is tested twice. Its script runs against a mock of the product's API, built from the vendor's OpenAPI spec where one exists. And a vanilla Pi has to finish example tasks with it, checked by the requests the mock saw. You do not need GEKI to use them.
 
+The same skills are in the skill catalog of every GEKI Companybots organization: [geki.ai/skills](https://geki.ai/skills/). [Register](https://console.geki.ai/register?utm_source=github&utm_medium=readme&utm_campaign=skills) and get free starting credits.
+
 ## Skills
 
 <!-- generated:catalog -->
@@ -90,7 +92,7 @@ How to run them locally is in [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/testi
 
 ## GEKI
 
-[GEKI](https://geki.ai) offers these skills in its managed agent API and in its products: Companybots, the Console and Chat. There you pick a skill from the catalog and connect it without environment variables: the setup comes from the skill's metadata (the address, the kind of sign-in, the allowed hosts). The skills in the catalog are published from this repository. The documentation is at [docs.geki.ai](https://docs.geki.ai).
+[GEKI](https://geki.ai) offers these skills in its managed agent API and in its products: Companybots, the Console and Chat. There you pick a skill from the catalog and connect it without environment variables: the setup comes from the skill's metadata (the address, the kind of sign-in, the allowed hosts). The skills in the catalog are published from this repository. An overview with a page per tool is at [geki.ai/skills](https://geki.ai/skills/) (in German). The documentation is at [docs.geki.ai](https://docs.geki.ai).
 
 ## Contributing
 

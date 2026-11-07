@@ -2,6 +2,10 @@
 
 HubSpot CRM from your agent. Search and read contacts, companies and deals, create and update them, and log notes on records. It does not send email and does not delete records.
 
+<!-- generated:geki -->
+**On GEKI Companybots** this skill is in the skill catalog of every organization. Skill page (in German): [geki.ai/skills/hubspot-mit-ki-automatisieren](https://geki.ai/skills/hubspot-mit-ki-automatisieren/). [Register](https://console.geki.ai/register?landing=skill-hubspot-mit-ki-automatisieren&utm_source=github&utm_medium=readme&utm_campaign=skills&utm_content=hubspot) and get free starting credits.
+<!-- /generated:geki -->
+
 ## Example requests
 
 - "Look up Anna Berger in HubSpot and tell me which deals her company has."

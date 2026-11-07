@@ -55,7 +55,7 @@ pytest
 
 The agent tests need a model key: `GEKI_API_KEY=... python ci/agent_test.py --skill <name>`. Install Pi first (`sh ci/setup.sh pi`, then set `PI_BIN` to `.cache/pi/node_modules/.bin/pi`).
 
-`python ci/catalog.py` rewrites the generated parts of the READMEs. Run it after you change metadata, `references/setup.md` or tests.
+`python ci/catalog.py` rewrites the generated parts of the READMEs. Run it after you change metadata, `references/setup.md`, tests or `ci/geki_pages.json` (the page of a skill on geki.ai, by its slug).
 
 ## Pull requests
 

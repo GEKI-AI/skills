@@ -2,6 +2,10 @@
 
 Do support work in Zammad from your agent. Find and read tickets, answer customers, add internal notes, change state, priority, owner and group, set tags, link tickets, look up customers and use the knowledge base. A reply of type `email` sends a real email to the customer, so the skill tells the agent to ask first. Set `ZAMMAD_EMAIL` to `off` for an agent that must only write notes. If people should only be able to report problems, use [`zammad-create-ticket`](../zammad-create-ticket).
 
+<!-- generated:geki -->
+**On GEKI Companybots** this skill is in the skill catalog of every organization. Skill page (in German): [geki.ai/skills/zammad](https://geki.ai/skills/zammad/). [Register](https://console.geki.ai/register?landing=skill-zammad&utm_source=github&utm_medium=readme&utm_campaign=skills&utm_content=zammad-support) and get free starting credits.
+<!-- /generated:geki -->
+
 ## Example requests
 
 - "Which open tickets mention the printer in room 2?"

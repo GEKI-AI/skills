@@ -2,6 +2,10 @@
 
 Code, issues, pull requests, comments and files of GitHub repositories from your agent. Clone and push with git, list and read issues and pull requests, create and update issues, create pull requests, comment, see what a pull request changes, read a file or folder, search issues. It does not merge.
 
+<!-- generated:geki -->
+**On GEKI Companybots** this skill is in the skill catalog of every organization. Skill page (in German): [geki.ai/skills/github-mit-ki-automatisieren](https://geki.ai/skills/github-mit-ki-automatisieren/). [Register](https://console.geki.ai/register?landing=skill-github-mit-ki-automatisieren&utm_source=github&utm_medium=readme&utm_campaign=skills&utm_content=github) and get free starting credits.
+<!-- /generated:geki -->
+
 ## Example requests
 
 - "Which open bugs does acme/web have?"

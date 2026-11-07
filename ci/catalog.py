@@ -1,7 +1,10 @@
 """Generate the catalog and the install text from the skill metadata.
 
 Blocks between `<!-- generated:NAME -->` and `<!-- /generated:NAME -->` are
-written by this script: in README.md (`catalog`) and in the README.md of every skill (`install`, `variables`, `setup`, `tests`, `tested`).
+written by this script: in README.md (`catalog`) and in the README.md of every skill (`geki`, `install`, `variables`, `setup`, `tests`, `tested`).
+
+The `geki` block links the skill's page on geki.ai, from `ci/geki_pages.json` (skill name to page slug), and
+the sign-up of GEKI Companybots.
 
     python ci/catalog.py                       write the blocks
     python ci/catalog.py --check               fail when a block is out of date
@@ -13,6 +16,7 @@ them from the branch `test-results`). Without `--results` they stay as they are.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -74,6 +78,34 @@ def catalog_list(skills: list[Skill]) -> str:
         out += [f"- [`{s.name}`](skills/{s.name}): {first_sentence(s.description)}" for s in chosen]
         out.append("")
     return "\n".join(out).rstrip("\n")
+
+
+GEKI_PAGES = ROOT / "ci" / "geki_pages.json"
+REGISTER_URL = "https://console.geki.ai/register"
+
+
+def geki_pages(skills: list[Skill]) -> dict[str, str]:
+    """Skill name to the slug of its page on geki.ai. Every name must be a skill of the repo."""
+    pages = json.loads(GEKI_PAGES.read_text(encoding="utf-8"))
+    unknown = sorted(set(pages) - {s.name for s in skills})
+    if unknown:
+        raise SystemExit(
+            f"{GEKI_PAGES.relative_to(ROOT)} names unknown skills: {', '.join(unknown)}"
+        )
+    return pages
+
+
+def geki_block(skill: Skill, page: str | None) -> str:
+    """Where to try the skill on GEKI Companybots. The console reads `landing=skill-<page>`."""
+    landing = f"skill-{page or skill.name}"
+    register = (
+        f"{REGISTER_URL}?landing={landing}&utm_source=github&utm_medium=readme"
+        f"&utm_campaign=skills&utm_content={skill.name}"
+    )
+    text = "**On GEKI Companybots** this skill is in the skill catalog of every organization."
+    if page:
+        text += f" Skill page (in German): [geki.ai/skills/{page}](https://geki.ai/skills/{page}/)."
+    return f"{text} [Register]({register}) and get free starting credits."
 
 
 def install_block(skill: Skill) -> str:
@@ -175,9 +207,11 @@ def render(results: dict[str, dict] | None = None) -> dict[Path, str]:
     text = readme.read_text(encoding="utf-8")
     text = replace_block(text, "catalog", catalog_list(skills))
     out[readme] = text
+    pages = geki_pages(skills)
     for skill in skills:
         path = skill.path / "README.md"
         body = path.read_text(encoding="utf-8")
+        body = replace_block(body, "geki", geki_block(skill, pages.get(skill.name)))
         for name, fn in (
             ("install", install_block),
             ("variables", variables_block),

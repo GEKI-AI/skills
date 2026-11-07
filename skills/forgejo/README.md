@@ -2,6 +2,10 @@
 
 Code, issues, pull requests, comments, files and CI status on your Forgejo server from your agent. Find repositories, clone and push with git, list and read issues and pull requests, create and update issues, create pull requests, comment, see what a pull request changes, check whether CI is green, read a file or folder, search issues. It does not merge.
 
+<!-- generated:geki -->
+**On GEKI Companybots** this skill is in the skill catalog of every organization. [Register](https://console.geki.ai/register?landing=skill-forgejo&utm_source=github&utm_medium=readme&utm_campaign=skills&utm_content=forgejo) and get free starting credits.
+<!-- /generated:geki -->
+
 ## Example requests
 
 - "Which open bugs does acme/web have?"

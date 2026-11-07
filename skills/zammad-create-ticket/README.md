@@ -2,6 +2,10 @@
 
 Create tickets in Zammad from your agent, and nothing else. It cannot read, answer or change existing tickets and it sends no email. Use it where people should reach the support team through the agent. To work on tickets, use [`zammad-support`](../zammad-support).
 
+<!-- generated:geki -->
+**On GEKI Companybots** this skill is in the skill catalog of every organization. Skill page (in German): [geki.ai/skills/zammad](https://geki.ai/skills/zammad/). [Register](https://console.geki.ai/register?landing=skill-zammad&utm_source=github&utm_medium=readme&utm_campaign=skills&utm_content=zammad-create-ticket) and get free starting credits.
+<!-- /generated:geki -->
+
 ## Example requests
 
 - "Open a ticket in the group Users: the printer in room 2 is offline."
