@@ -1,6 +1,6 @@
 # zammad-support
 
-Do support work in Zammad from your agent. Find and read tickets, answer customers, add internal notes, change state, priority, owner and group, set tags, link tickets, look up customers and use the knowledge base. A reply of type `email` sends a real email to the customer, so the skill tells the agent to ask first. If people should only be able to report problems, use [`zammad-create-ticket`](../zammad-create-ticket).
+Do support work in Zammad from your agent. Find and read tickets, answer customers, add internal notes, change state, priority, owner and group, set tags, link tickets, look up customers and use the knowledge base. A reply of type `email` sends a real email to the customer, so the skill tells the agent to ask first. Set `ZAMMAD_EMAIL` to `off` for an agent that must only write notes. If people should only be able to report problems, use [`zammad-create-ticket`](../zammad-create-ticket).
 
 ## Example requests
 
@@ -44,6 +44,7 @@ The skill needs Python 3.11+ and nothing else. It uses the standard library only
 | --- | --- |
 | `ZAMMAD_TOKEN` | secret |
 | `ZAMMAD_URL` | setting |
+| `ZAMMAD_EMAIL` | setting |
 
 Hosts the skill talks to: the host of `ZAMMAD_URL`.
 <!-- /generated:variables -->
@@ -57,15 +58,26 @@ Connect your Zammad instance in three steps.
 2. Set `ZAMMAD_TOKEN` to the token. Set `ZAMMAD_URL` to the address of your instance without a trailing slash, for example `https://support.company.com`.
 3. Check the connection: `python scripts/zammad.py states`. It prints the ticket states of your instance.
 
+Optional: set `ZAMMAD_EMAIL` to `off` when the agent must never send email. The script then refuses replies of type `email`, and the agent can only write notes. Without it, email is on.
+
 The Zammad API must be enabled: Settings, System, API, "API Token Access".
 
 In a GEKI bot, `ZAMMAD_URL` is a skill setting of the bot. `ZAMMAD_TOKEN` is either a shared credential of the company (an environment variable secret in a vault) or, with "each person", a token that every person pastes once. The allowed host is the host of `ZAMMAD_URL`. With "each person", tickets and messages are written under the name of that person.
+
+### Start a GEKI bot for each new ticket
+
+A Zammad webhook can start a bot for every new ticket.
+
+1. In GEKI, add an on-demand trigger to the bot. Copy its URL and its token.
+2. In Zammad, open Admin, Manage, Webhook, and add a webhook. Endpoint: the URL of the trigger. Bearer token: the token of the trigger. Turn on the custom payload and send the ticket id, for example `{"ticket_id": "#{ticket.id}", "title": "#{ticket.title}"}`.
+3. Open Admin, Manage, Trigger, and add a trigger. Conditions: action is created, and tags do not contain a guard tag such as `ai-done`. Action: the webhook from step 2.
+4. In the bot's instructions, read the ticket with `ticket ID --internal`, do the work, and add the guard tag last with `tag-add ID ai-done`. The same webhook can fire twice. The guard tag keeps the bot from working on a ticket twice.
 <!-- /generated:setup -->
 
 ## Tests
 
 <!-- generated:tests -->
-- 29 script tests (pytest) run against a small mock with fixtures, on Python 3.11 with only the declared packages.
+- 33 script tests (pytest) run against a small mock with fixtures, on Python 3.11 with only the declared packages.
 - 6 agent tasks: a vanilla Pi with a model runs each task against the mock, up to three times. A task passes with two passing runs, judged by the requests the mock saw.
 - An optional read-only run against a real account can be started by hand. It is not part of the checks.
 <!-- /generated:tests -->

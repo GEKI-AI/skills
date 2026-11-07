@@ -4,13 +4,13 @@ description: Do support work in Zammad. Search and read tickets with their conve
 license: Apache-2.0
 compatibility: Python 3.11+, access to your Zammad instance over HTTPS
 metadata:
-  version: "1"
+  version: "2"
   geki-tags: zammad, tickets, support
   geki-category: tickets
   geki-access: read, write
   geki-auth: company, person-token
   geki-credentials: ZAMMAD_TOKEN
-  geki-settings: ZAMMAD_URL
+  geki-settings: ZAMMAD_URL, ZAMMAD_EMAIL
   geki-hosts: $ZAMMAD_URL
 ---
 
@@ -18,7 +18,7 @@ metadata:
 
 Find, read, answer and change tickets in Zammad through one script. Output is JSON.
 
-Needs the variables `ZAMMAD_URL` (for example `https://support.example.com`) and `ZAMMAD_TOKEN`. If one is missing, tell the user which one and point to `references/setup.md`. Never print the token.
+Needs the variables `ZAMMAD_URL` (for example `https://support.example.com`) and `ZAMMAD_TOKEN`. If one is missing, tell the user which one and point to `references/setup.md`. Never print the token. With `ZAMMAD_EMAIL=off` the script refuses replies of type `email`: write a note instead.
 
 Find and read:
 
@@ -56,7 +56,7 @@ python scripts/zammad.py link-add 42 52037
 python scripts/zammad.py create --title "Printer offline" --group Users --customer anna@example.com --type phone --from-customer --body "Called: the printer is offline."
 ```
 
-- `reply` adds a message. The default type `note` stays in Zammad and the customer can see it. `--internal` hides it from the customer. `--type email` with `--to` sends a real email, `--cc` adds a copy. `--time` books time on the ticket. `--attach` adds a file and can repeat. Messages are plain text.
+- `reply` adds a message. The default type `note` stays in Zammad and the customer can see it. `--internal` hides it from the customer. `--type email` with `--to` sends a real email, `--cc` adds a copy. `--time` books time on the ticket. `--attach` adds a file and can repeat. Messages are plain text. `--html` sends the text as HTML, for lists and links.
 - `update` changes only the fields you give. Run `states` and `priorities` for the names your instance uses. `--owner` takes an email or login. Pending states need `--pending-time`.
 - `link-add ID NUMBER` takes the ticket `id` of one ticket and the long `number` of the other.
 - `create` opens a ticket for a customer (email or login) in a group. Add `--from-customer` when the text comes from the customer, for example from a phone call. It cannot be changed later. Add `--state`, `--priority` or `--owner` only if the user asks.

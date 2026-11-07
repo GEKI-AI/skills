@@ -2,7 +2,7 @@
 """Support work in Zammad: find, read and answer tickets, change them, use the knowledge base.
 
 Needs ZAMMAD_URL (https://support.example.com) and ZAMMAD_TOKEN (a personal
-access token). Output is JSON on stdout. An error is JSON on stderr with exit
+access token). ZAMMAD_EMAIL=off refuses replies of type email. Output is JSON on stdout. An error is JSON on stderr with exit
 code 1.
 """
 
@@ -267,6 +267,8 @@ def attachment_rows(paths: list[str]) -> list[dict]:
 
 
 def cmd_reply(args: argparse.Namespace) -> None:
+    if args.type == "email" and os.environ.get("ZAMMAD_EMAIL", "").strip().lower() == "off":
+        fail("email is off for this agent (ZAMMAD_EMAIL=off): write a note instead")
     if args.type == "email" and not args.to:
         fail("an email needs a recipient: give --to")
     if args.type == "email" and args.internal:
@@ -277,7 +279,7 @@ def cmd_reply(args: argparse.Namespace) -> None:
         "type": args.type,
         "internal": args.internal,
         "sender": "Agent",
-        "content_type": "text/plain",
+        "content_type": "text/html" if args.html else "text/plain",
     }
     for key in ("subject", "to", "cc"):
         if getattr(args, key):
@@ -418,6 +420,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--cc", help="copy for type email")
     p.add_argument("--subject")
     p.add_argument("--internal", action="store_true", help="hidden from the customer")
+    p.add_argument("--html", action="store_true", help="the text is HTML, not plain text")
     p.add_argument("--time", help="time spent, in the unit of your instance, for example 15")
     p.add_argument("--attach", action="append", metavar="FILE", help="file to attach, repeatable")
     text(p)

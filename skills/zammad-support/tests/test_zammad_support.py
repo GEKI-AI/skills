@@ -174,6 +174,43 @@ def test_internal_email_is_not_sent(cli, mock):
     assert mock.requests == []
 
 
+def test_email_off_refuses_email(cli, mock):
+    args = ("reply", "42", "--type", "email", "--to", "anna@example.com", "--body", "x")
+    result = cli(*args, extra={"ZAMMAD_EMAIL": "off"})
+    assert result.code == 1
+    assert "ZAMMAD_EMAIL" in result.error["error"]
+    assert mock.requests == []
+
+
+def test_email_off_still_writes_notes(cli, mock):
+    result = cli("reply", "42", "--internal", "--body", "x", extra={"ZAMMAD_EMAIL": "off"})
+    assert result.code == 0, result.err
+    assert mock.requests[0]["body"]["type"] == "note"
+
+
+def test_reply_is_plain_text_by_default(cli, mock):
+    assert cli("reply", "42", "--internal", "--body", "x").code == 0
+    assert mock.requests[0]["body"]["content_type"] == "text/plain"
+
+
+def test_reply_html_with_subject(cli, mock):
+    result = cli(
+        "reply",
+        "42",
+        "--internal",
+        "--html",
+        "--subject",
+        "Answer for the customer",
+        "--body",
+        "<p>Hello,</p><ul><li>Restart the printer.</li></ul>",
+    )
+    assert result.code == 0, result.err
+    body = mock.requests[0]["body"]
+    assert body["content_type"] == "text/html"
+    assert body["subject"] == "Answer for the customer"
+    assert body["body"] == "<p>Hello,</p><ul><li>Restart the printer.</li></ul>"
+
+
 def test_missing_attachment_is_an_error(cli, mock):
     result = cli("reply", "42", "--body", "x", "--attach", "/nonexistent/file")
     assert result.code == 1
