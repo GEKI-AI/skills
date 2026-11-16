@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tickets, week 46</title>
+<link rel="stylesheet" href="https://cdn.example.com/report.css">
+<style>
+body { font-family: system-ui, sans-serif; margin: 0; background: url(https://img.example.com/bg.png); }
+main { max-width: 760px; margin: 0 auto; padding: 16px; }
+td, th { padding: 4px 8px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+<h1>Tickets, week 46</h1>
+<p>Average answer time: nan hours. Prepared for {customer_name}.</p>
+<h2>Tickets per day</h2>
+<svg viewBox="0 0 400 200" role="img" aria-label="Tickets per day">
+  <line x1="40" y1="170" x2="390" y2="170" stroke="#999"/>
+  <polyline points="60,520 140,531 220,498 300,540 380,512" fill="none" stroke="#1f5fbf" stroke-width="2"/>
+  <text x="60" y="188" font-size="12" text-anchor="middle">Mon</text>
+  <text x="380" y="188" font-size="12" text-anchor="start">Friday afternoon</text>
+</svg>
+<h2>Open tickets</h2>
+<table>
+<tr><th>Ticket</th><th>Team</th><th>Category</th><th>Channel</th><th>Opened</th><th>Waiting</th><th>Over the limit by</th></tr>
+<tr><td>1001</td><td>Billing and invoices</td><td>Invoice correction</td><td>Customer portal</td><td>02.11.2026</td><td>14 days</td><td>9 days and 4 hours</td></tr>
+</table>
+<script src="https://cdn.example.com/chart.js"></script>
+</main>
+</body>
+</html>

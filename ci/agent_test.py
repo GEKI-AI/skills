@@ -26,6 +26,11 @@ cheap model that checks `judge:` criteria of a task).
 Task file: name, prompt, expect.requests (method, path, query, json),
 expect.forbidden (method, path), expect.answer_contains, judge. A value that
 starts with `re:` is a regular expression searched in the text.
+
+A task for a skill that works on files has `files` (names in `tests/fixtures`,
+copied into the working folder of the agent), `expect.files` (`path`, a glob in
+that folder that must match a file, and `contains`, texts that the first match
+must hold), and `timeout` in seconds when the default is too short.
 """
 
 from __future__ import annotations
@@ -91,6 +96,21 @@ def check(task: dict, requests: list[dict], violations: list, answer: str) -> li
     for text in expect.get("answer_contains", []):
         if text.lower() not in answer.lower():
             problems.append(f"the answer does not contain {text!r}")
+    return problems
+
+
+def check_files(task: dict, work: Path) -> list[str]:
+    """What `expect.files` of a task misses in the working folder of the agent."""
+    problems = []
+    for rule in (task.get("expect") or {}).get("files", []):
+        found = sorted(p for p in work.glob(rule["path"]) if p.is_file())
+        if not found:
+            problems.append(f"no file {rule['path']}")
+            continue
+        text = found[0].read_text(encoding="utf-8", errors="replace")
+        for want in rule.get("contains", []):
+            if not match_value(want, text) and str(want).lower() not in text.lower():
+                problems.append(f"{found[0].name} does not contain {want!r}")
     return problems
 
 
@@ -171,6 +191,8 @@ def run_once(skill: Skill, task: dict, model: str, base_url: str, timeout: int) 
             env.update(write_pi_home(home, model, base_url))
             env.update(mock_env(skill.path, url))
             install_skill(skill, home)
+            for name in task.get("files", []):
+                shutil.copy(skill.path / "tests" / "fixtures" / name, work / Path(name).name)
             command = [
                 os.environ.get("PI_BIN", "pi"),
                 "-p",
@@ -191,7 +213,7 @@ def run_once(skill: Skill, task: dict, model: str, base_url: str, timeout: int) 
                     env=env,
                     capture_output=True,
                     text=True,
-                    timeout=timeout,
+                    timeout=int(task.get("timeout") or timeout),
                     check=False,
                 )
                 answer, code, err = proc.stdout, proc.returncode, proc.stderr
@@ -199,9 +221,10 @@ def run_once(skill: Skill, task: dict, model: str, base_url: str, timeout: int) 
                 answer, code, err = "", 124, "timeout"
             except OSError as exc:
                 answer, code, err = "", 127, str(exc)
+            missing = check_files(task, work)
     finally:
         mock.stop()
-    problems = check(task, mock.requests, mock.violations, answer)
+    problems = check(task, mock.requests, mock.violations, answer) + missing
     if code != 0:
         problems.insert(0, f"pi exited with {code}: {err.strip()[-200:]}")
     elif not problems:

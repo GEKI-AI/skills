@@ -28,7 +28,7 @@ Instructions for agents that work on this repository. People start with [README.
 4. Run `python ci/catalog.py` when you changed metadata, `references/setup.md`, or tests. It rewrites the generated parts of the READMEs. Never edit between the `generated:` markers by hand.
 5. Run the local checks of CONTRIBUTING.md.
 
-A new skill copies the folder layout of an existing one, sets its test variables in `tests/env.json`, and adds its spec to `ci/specs.json` when the vendor publishes an OpenAPI spec.
+A new skill copies the folder layout of an existing one, sets its test variables in `tests/env.json`, and adds its spec to `ci/specs.json` when the vendor publishes an OpenAPI spec. A skill that talks to no product (`data-report`) has no `tests/env.json` and no mock. Its agent tasks name their input files and check the files the agent left ([docs/testing.md](docs/testing.md#agent-tasks)).
 
 ## Rules
 

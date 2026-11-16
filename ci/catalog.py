@@ -165,6 +165,13 @@ def tests_block(skill: Skill) -> str:
         for f in (skill.path / "tests").glob("test_*.py")
     )
     tasks = len(list((skill.path / "tests" / "tasks").glob("*.yaml")))
+    if not skill.outside:
+        return "\n".join(
+            [
+                f"- {tests} script tests (pytest), on Python 3.11 with only the declared packages.",
+                f"- {tasks} agent tasks: a vanilla Pi with a model runs each task on files from the fixtures, up to three times. A task passes with two passing runs, judged by the answer and by the files the agent left.",
+            ]
+        )
     return "\n".join(
         [
             f"- {tests} script tests (pytest) run against {mock}, on Python 3.11 with only the declared packages.",

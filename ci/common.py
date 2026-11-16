@@ -18,8 +18,14 @@ PINS = ROOT / "ci" / "pins.env"
 
 
 def mock_env(skill_dir: Path, url: str) -> dict[str, str]:
-    """The test variables of a skill: `tests/env.json`, with `{mock_url}` set to the mock."""
-    env = json.loads((skill_dir / "tests" / "env.json").read_text(encoding="utf-8"))
+    """The test variables of a skill: `tests/env.json`, with `{mock_url}` set to the mock.
+
+    A skill that talks to no outside system has no such file and no variables.
+    """
+    path = skill_dir / "tests" / "env.json"
+    if not path.exists():
+        return {}
+    env = json.loads(path.read_text(encoding="utf-8"))
     return {name: value.replace("{mock_url}", url) for name, value in env.items()}
 
 
@@ -101,6 +107,11 @@ class Skill:
 
     def list(self, key: str) -> list[str]:
         return list(dict.fromkeys(items(self.get(key))))
+
+    @property
+    def outside(self) -> bool:
+        """The skill talks to a product. Without auth, credentials and hosts it works on local files only."""
+        return any(self.list(key) for key in ("geki-auth", "geki-credentials", "geki-hosts"))
 
     @property
     def version(self) -> int:

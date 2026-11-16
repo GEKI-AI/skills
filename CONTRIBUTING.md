@@ -10,6 +10,8 @@ Issues and pull requests on GitHub are welcome. The repository on GitHub is a mi
 
 A skill that connects an agent to a product through its API: one folder in `skills/`. Name a skill by product and task, for example `<product>-read`. Make a `-read` and a `-write` skill only when the split matters for access rights. Otherwise make one skill.
 
+A skill for a kind of work that any agent does on local files, without a product behind it, belongs here too. `data-report` is one: advice and a check for a report from data. Name it by the work. It has no credentials, hosts and setup, and its tests need no mock.
+
 Skills that need features of one product (workspace files, chat cards) do not belong here.
 
 ## A skill folder

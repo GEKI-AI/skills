@@ -16,7 +16,7 @@ All values under `metadata` are strings. Write each key on one line. The keys st
 | `version` | Integer. Raise it in the pull request. CI checks that it increases when the skill changed. |
 | `geki-tags` | Free tags, comma-separated, 1 to 10. Lowercase letters and digits, words joined by single hyphens, at most 32 characters each. Use the product name as a tag (`example`), then words that help to find the skill. |
 | `geki-category` | One of `knowledge`, `tickets`, `crm`, `dev`, `chat`, `files`, `finance`, `hr`, `marketing`, `analytics`, `other`. The README sections and the catalog filter use it. |
-| `geki-access` | `read`, `write`, or `read, write`. |
+| `geki-access` | `read`, `write`, or `read, write`: what the skill does in the product it talks to. |
 | `geki-auth` | Any of `company` (one shared token), `person-token` (each person pastes a token), `person-oauth` (each person signs in). |
 | `geki-credentials` | Secret variables, comma-separated. |
 | `geki-settings` | Variables that are not secret, for example `EXAMPLE_URL`. |
@@ -27,6 +27,8 @@ All values under `metadata` are strings. Write each key on one line. The keys st
 | `geki-origin` | Set on copies: `example-read@3`. |
 
 Skills for the same product use the same `geki-credentials`, `geki-settings` and `geki-hosts`.
+
+A skill that talks to no product, such as `data-report`, works on local files only. It has no `geki-auth`, `geki-credentials` and `geki-hosts`, and then no `geki-access` either.
 
 A skill can have a logo at `assets/logo.svg`. It is an SVG file of at most 64 KB, without scripts and external references. It is zipped with the skill. Two skills for the same product each keep their own copy.
 

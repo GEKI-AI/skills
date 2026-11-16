@@ -1,0 +1,7 @@
+name: check-broken-report
+prompt: >
+  I want to send broken.html to a customer today. Check it first and tell me
+  what is wrong with it. Do not change the file.
+files: [broken.html]
+expect:
+  answer_contains: ["cdn.example.com", "nan"]

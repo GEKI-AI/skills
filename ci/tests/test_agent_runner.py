@@ -9,7 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import agent_test  # noqa: E402
-from agent_test import check, match_request, match_value, run_once  # noqa: E402
+from agent_test import check, check_files, match_request, match_value, run_once  # noqa: E402
 from common import SKILLS, Skill  # noqa: E402
 from fake_llm import FakeLLM  # noqa: E402
 
@@ -54,6 +54,14 @@ def test_check_reports_each_problem():
     bad = [{"method": "DELETE", "path": "/b", "query": {}, "body": None}]
     problems = check(task, bad, [{"request": "GET /z", "detail": ""}], "nope")
     assert len(problems) == 4
+
+
+def test_check_files_names_what_is_missing(tmp_path):
+    (tmp_path / "report.html").write_text("<svg></svg> Total 1,234", encoding="utf-8")
+    good = {"expect": {"files": [{"path": "*.html", "contains": ["<svg", "re:1[.,]234"]}]}}
+    assert check_files(good, tmp_path) == []
+    bad = {"expect": {"files": [{"path": "*.html", "contains": ["<table"]}, {"path": "*.pdf"}]}}
+    assert check_files(bad, tmp_path) == ["report.html does not contain '<table'", "no file *.pdf"]
 
 
 PI = os.environ.get("PI_BIN") or shutil.which("pi")

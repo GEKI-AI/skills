@@ -1,0 +1,11 @@
+name: small-report
+prompt: >
+  Build a short report from orders.csv and save it as report.html: revenue per
+  month and revenue per region, each with a chart, and the total revenue. One
+  page is enough.
+files: [orders.csv]
+timeout: 600
+expect:
+  files:
+    - path: report.html
+      contains: ["<svg", "viewport", "re:4[.,]?560", "re:1[.,]?690"]

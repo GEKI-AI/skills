@@ -124,6 +124,21 @@ expect:
 
 A value that starts with `re:` is a regular expression. A `json` condition is a subset of the logged body. Optional `judge:` is a sentence that a cheap model (`AGENT_JUDGE_MODEL`) checks against the answer.
 
+A skill that works on files and talks to no product has no mock to judge by. Its tasks name their input and check what the agent left:
+
+```yaml
+name: small-report
+prompt: Build a short report from orders.csv and save it as report.html.
+files: [orders.csv]       # from tests/fixtures, copied into the working folder of the agent
+timeout: 600              # seconds for one run, when the default of 300 is too short
+expect:
+  files:                  # each path is a glob in the working folder and must match a file
+    - path: report.html
+      contains: ["<svg", "re:4[.,]?560"]
+```
+
+Such a skill has no `tests/env.json`, and its script tests use the `cli` fixture without the mock.
+
 `python ci/agent_test.py` runs every task with a vanilla Pi and a GEKI model (`GEKI_API_KEY`, default model `deepseek-v4.1-flash`, base URL `https://api.geki.ai/v1`). A task passes with two passing runs out of three. It stops as soon as it has two passes, and as soon as it has two failures. Without `GEKI_API_KEY` the script fails. The skill is installed like a user would do it: copied to `~/.agents/skills` of an empty home. Write tasks the way a user asks, not the way the script works.
 
 `ci/tests/` tests the runner itself with a scripted fake model, so it runs without a key. It also tests the change detection, the fingerprint, the result store and the verdict of the `tests` job.

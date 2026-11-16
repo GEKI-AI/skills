@@ -151,10 +151,13 @@ def test_a_change_outside_the_skills_keeps_every_fingerprint(tmp_path):
     assert fingerprints() == before
 
 
-def test_every_skill_has_test_variables_with_the_mock_address():
+def test_every_skill_for_a_product_has_test_variables_with_the_mock_address():
     for skill in load_skills():
         env = mock_env(skill.path, "http://mock.example")
-        assert any("http://mock.example" in value for value in env.values()), skill.name
+        if skill.outside:
+            assert any("http://mock.example" in value for value in env.values()), skill.name
+        else:
+            assert env == {}, skill.name
 
 
 def test_settings_use_defaults_for_empty_variables(monkeypatch):

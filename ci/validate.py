@@ -150,11 +150,14 @@ def check_metadata(skill: Skill, errors: list[str]) -> None:
             )
     if skill.get("geki-category") not in CATEGORIES:
         errors.append(f"geki-category must be one of {sorted(CATEGORIES)}")
-    if skill.get("geki-access") not in ACCESS:
-        errors.append("geki-access must be read, write, or read, write")
     auth = skill.list("geki-auth")
-    if not auth or not set(auth) <= AUTH:
-        errors.append(f"geki-auth must list some of {sorted(AUTH)}")
+    if skill.outside:
+        if skill.get("geki-access") not in ACCESS:
+            errors.append("geki-access must be read, write, or read, write")
+        if not auth or not set(auth) <= AUTH:
+            errors.append(f"geki-auth must list some of {sorted(AUTH)}")
+    elif skill.get("geki-access"):
+        errors.append("geki-access is for a skill that talks to an outside system")
 
     credentials = check_listed(skill, "geki-credentials", errors)
     for name in credentials:
@@ -202,7 +205,8 @@ def check_files(skill: Skill, errors: list[str]) -> None:
         errors.append("tests/ needs script tests (test_*.py)")
     if not tasks:
         errors.append("tests/tasks/ needs agent task files (*.yaml)")
-    errors.extend(check_test_env(path))
+    if skill.outside or (path / "tests" / "env.json").exists():
+        errors.extend(check_test_env(path))
     if skill.list("geki-credentials") and not (path / "references" / "setup.md").exists():
         errors.append("references/setup.md is required when the skill declares credentials")
     tokens = len(skill.text) // 4

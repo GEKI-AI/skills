@@ -76,6 +76,25 @@ def test_validator_rejects(tmp_path, old, new, expected):
     assert any(expected in e for e in broken(tmp_path, old, new)), broken(tmp_path, old, new)
 
 
+def test_a_skill_without_an_outside_system_needs_no_access_auth_and_test_variables(tmp_path):
+    target = tmp_path / "confluence"
+    shutil.copytree(SKILLS / "confluence", target)
+    skill_md = target / "SKILL.md"
+    kept = [
+        line
+        for line in skill_md.read_text(encoding="utf-8").splitlines(keepends=True)
+        if not line.strip().startswith(
+            ("geki-auth", "geki-credentials", "geki-hosts", "geki-settings")
+        )
+    ]
+    skill_md.write_text("".join(kept), encoding="utf-8")
+    (target / "tests" / "env.json").unlink()
+    shutil.rmtree(target / "references")
+    errors: list[str] = []
+    validate.check_skill(Skill(target), errors)
+    assert errors == ["geki-access is for a skill that talks to an outside system"]
+
+
 def test_script_cannot_import_an_undeclared_package(tmp_path):
     target = tmp_path / "confluence"
     shutil.copytree(SKILLS / "confluence", target)
