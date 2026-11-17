@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HubSpot CRM: search, read, create and update contacts, companies and deals, add notes.
+"""HubSpot CRM: search, read, create and update contacts, companies and deals, add notes, list owners.
 
 Needs HUBSPOT_TOKEN (a private app access token). The API address comes from
 HUBSPOT_BASE_URL and defaults to https://api.hubapi.com. Output is JSON on
@@ -28,9 +28,18 @@ DEFAULT_PROPERTIES = {
         "company",
         "lifecyclestage",
         "hs_lead_status",
+        "hubspot_owner_id",
     ],
-    "companies": ["name", "domain", "industry", "phone", "city", "numberofemployees"],
-    "deals": ["dealname", "amount", "dealstage", "pipeline", "closedate"],
+    "companies": [
+        "name",
+        "domain",
+        "industry",
+        "phone",
+        "city",
+        "numberofemployees",
+        "hubspot_owner_id",
+    ],
+    "deals": ["dealname", "amount", "dealstage", "pipeline", "closedate", "hubspot_owner_id"],
 }
 NOTE_ASSOCIATION_TYPE = {"contacts": 202, "companies": 190, "deals": 214}
 OPERATORS = (
@@ -192,6 +201,25 @@ def cmd_note(args: argparse.Namespace) -> None:
     print(json.dumps(record(call("POST", "/crm/v3/objects/notes", body=body))))
 
 
+def cmd_owners(args: argparse.Namespace) -> None:
+    data = call(
+        "GET",
+        "/crm/v3/owners",
+        {"limit": max(1, min(args.limit, 100)), "after": args.after, "email": args.email},
+    )
+    after = ((data.get("paging") or {}).get("next") or {}).get("after")
+    owners = [
+        {
+            "id": item.get("id"),
+            "name": " ".join(p for p in (item.get("firstName"), item.get("lastName")) if p),
+            "email": item.get("email"),
+            "archived": item.get("archived", False),
+        }
+        for item in data.get("results") or []
+    ]
+    print(json.dumps({"results": owners, "next": after}))
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description="HubSpot CRM. JSON output.")
     sub = root.add_subparsers(dest="command", required=True)
@@ -230,6 +258,10 @@ def parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--body", help="text of the note")
     p.add_argument("--body-file", help="- to read the text from standard input")
+    p = add("owners", cmd_owners, "list the owners (users) with id, name and email")
+    p.add_argument("--email", help="only the owner with this email address")
+    p.add_argument("--limit", type=int, default=100)
+    p.add_argument("--after", help="the `next` value of the previous result")
     return root
 
 

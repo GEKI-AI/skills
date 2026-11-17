@@ -1,0 +1,12 @@
+name: deal-owner
+prompt: >
+  Who owns the Berger GmbH renewal deal in HubSpot? I need the name.
+expect:
+  requests:
+    - method: POST
+      path: /crm/v3/objects/deals/search
+    - method: GET
+      path: /crm/v3/owners
+  forbidden:
+    - method: ["PUT", "PATCH", "DELETE"]
+  answer_contains: ["Mara Lindner"]

@@ -25,7 +25,7 @@
       "results": [
         {
           "id": "8801", "createdAt": "2026-10-01T10:00:00.000Z", "updatedAt": "2026-10-30T09:30:00.000Z", "archived": false,
-          "properties": {"dealname": "Berger GmbH renewal", "amount": "24000", "dealstage": "contractsent", "pipeline": "default", "closedate": "2026-12-15"}
+          "properties": {"dealname": "Berger GmbH renewal", "amount": "24000", "dealstage": "contractsent", "pipeline": "default", "closedate": "2026-12-15", "hubspot_owner_id": "71"}
         }
       ]
     }
@@ -70,6 +70,16 @@
     "body": {
       "id": "9001", "createdAt": "2026-11-02T10:00:00.000Z", "updatedAt": "2026-11-02T10:00:00.000Z", "archived": false,
       "properties": {"hs_note_body": "Called, wants a quote."}
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/crm/v3/owners",
+    "body": {
+      "results": [
+        {"id": "71", "email": "mara@example.com", "firstName": "Mara", "lastName": "Lindner", "userId": 9001, "type": "PERSON", "createdAt": "2026-01-10T08:00:00.000Z", "updatedAt": "2026-06-02T08:00:00.000Z", "archived": false},
+        {"id": "72", "email": "jonas@example.com", "firstName": "Jonas", "lastName": "Wieser", "userId": 9002, "type": "PERSON", "createdAt": "2026-02-11T08:00:00.000Z", "updatedAt": "2026-06-02T08:00:00.000Z", "archived": false}
+      ]
     }
   }
 ]

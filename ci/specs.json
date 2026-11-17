@@ -44,5 +44,10 @@
     "skills": ["hubspot"],
     "prefix": "/crm/v3/objects/notes",
     "url": "https://raw.githubusercontent.com/HubSpot/HubSpot-public-api-spec-collection/27a5f43daf390c82cff62ba5214a8246437c0485/PublicApiSpecs/CRM/Notes/Rollouts/424/v3/notes.json"
+  },
+  {
+    "skills": ["hubspot"],
+    "prefix": "/crm/v3/owners",
+    "url": "https://raw.githubusercontent.com/HubSpot/HubSpot-public-api-spec-collection/27a5f43daf390c82cff62ba5214a8246437c0485/PublicApiSpecs/CRM/Crm%20Owners/Rollouts/146888/v3/crmOwners.json"
   }
 ]

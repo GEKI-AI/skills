@@ -128,3 +128,17 @@ def test_real_search(real_cli):
     result = real_cli("search", "contacts", "--limit", "1")
     assert result.code == 0, result.err
     assert "results" in result.json
+
+
+def test_owners_lists_id_name_and_email(cli, mock):
+    result = cli("owners", "--email", "mara@example.com")
+    assert result.code == 0, result.err
+    assert result.json["results"][0] == {
+        "id": "71",
+        "name": "Mara Lindner",
+        "email": "mara@example.com",
+        "archived": False,
+    }
+    sent = mock.requests[0]
+    assert (sent["method"], sent["path"]) == ("GET", "/crm/v3/owners")
+    assert sent["query"]["email"] == "mara@example.com"
