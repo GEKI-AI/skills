@@ -10,13 +10,13 @@ One workflow, `Skills` (`skills.yml`), on every pull request, on every push to `
 | --- | --- |
 | `plan` | Decides which skills need a test run. |
 | `static` | Metadata rules, `skills-ref`, generated READMEs, lint, license check, version and changelog check, secret scan, tests of the CI code. |
-| `scripts` | The script tests of the planned skills, against the mocks. |
+| `scripts` | The script tests of the planned skills, against the mocks. A skill without a script has none and passes this job. |
 | `agents` | The agent tasks of the planned skills, with a vanilla Pi and a model. |
 | `tests` | The one check that sums up all jobs. Branch protection requires only this check. |
 
 The check name on Forgejo is `Skills / tests (pull_request)` for pull requests and `Skills / tests (push)` for `main`.
 
-The workflow never reports green without a test. A missing `GEKI_API_KEY` fails the `agents` job. A skill without tests fails. The GEKI image job that cannot run is listed as "NOT RUN" in the report of the `tests` job, not as a pass.
+The workflow never reports green without a test. A missing `GEKI_API_KEY` fails the `agents` job. A skill without agent tasks fails, and so does a skill with a script and without script tests. The GEKI image job that cannot run is listed as "NOT RUN" in the report of the `tests` job, not as a pass.
 
 ## Test only what changed
 
@@ -95,7 +95,7 @@ def test_search(cli, mock):
 
 `cli` runs the script of the skill in a clean environment with the variables of the skill pointing to the mock (see `tests/env.json` in the skill, where `{mock_url}` stands for the address of the mock). Set `SKILL_PYTHON` to run the script with another interpreter.
 
-`python ci/run_scripts.py --skills a,b` is what CI runs. For each skill it starts the Prism mocks, builds a fresh venv of Python 3.11 that holds only the packages the skill declares, and runs its tests with `SKILL_PYTHON` set to that venv. An undeclared import fails. A skill is green only when no test failed and at least one test passed.
+`python ci/run_scripts.py --skills a,b` is what CI runs. For each skill it starts the Prism mocks, builds a fresh venv of Python 3.11 that holds only the packages the skill declares, and runs its tests with `SKILL_PYTHON` set to that venv. An undeclared import fails. A skill is green only when no test failed and at least one test passed. A skill without a script is the exception: it has no script tests, and its agent tasks alone verify it.
 
 Test what the script sends (path, fields, headers), what it prints, and the error cases. Mark a read-only test against the real service with `@pytest.mark.real_api`: it uses the `real_cli` fixture and runs only with `REAL_API=1` and the real variables.
 
@@ -138,6 +138,8 @@ expect:
 ```
 
 Such a skill has no `tests/env.json`, and its script tests use the `cli` fixture without the mock.
+
+A skill that is advice only has no script and no script tests. Its tasks ask for what the advice should change: a review of a file from the fixtures, or a plan for given input. Check the answer with `answer_contains` and a `judge` sentence. The runner has no browser and no product, so a task cannot test work that needs one. Say in the skill's README how that work was tested.
 
 `python ci/agent_test.py` runs every task with a vanilla Pi and a GEKI model (`GEKI_API_KEY`, default model `deepseek-v4.1-flash`, base URL `https://api.geki.ai/v1`). A task passes with two passing runs out of three. It stops as soon as it has two passes, and as soon as it has two failures. Without `GEKI_API_KEY` the script fails. The skill is installed like a user would do it: copied to `~/.agents/skills` of an empty home. Write tasks the way a user asks, not the way the script works.
 

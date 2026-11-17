@@ -24,11 +24,11 @@ Instructions for agents that work on this repository. People start with [README.
 
 1. Change the files in `skills/<name>/`. Keep `SKILL.md` short and the script one CLI with JSON output.
 2. Raise `metadata.version` by one and add an entry to the skill's `CHANGELOG.md`. Changes only to `tests/` or the skill `README.md` need no new version. CI fails otherwise.
-3. Add or adapt script tests and agent tasks in `skills/<name>/tests/`. Test what the script sends, not only what it prints.
+3. Add or adapt script tests and agent tasks in `skills/<name>/tests/`. Test what the script sends, not only what it prints. A skill without a script has agent tasks only.
 4. Run `python ci/catalog.py` when you changed metadata, `references/setup.md`, or tests. It rewrites the generated parts of the READMEs. Never edit between the `generated:` markers by hand.
 5. Run the local checks of CONTRIBUTING.md.
 
-A new skill copies the folder layout of an existing one, sets its test variables in `tests/env.json`, and adds its spec to `ci/specs.json` when the vendor publishes an OpenAPI spec. A skill that talks to no product (`data-report`) has no `tests/env.json` and no mock. Its agent tasks name their input files and check the files the agent left ([docs/testing.md](docs/testing.md#agent-tasks)).
+A new skill copies the folder layout of an existing one, sets its test variables in `tests/env.json`, and adds its spec to `ci/specs.json` when the vendor publishes an OpenAPI spec. A skill that talks to no product (`data-report`) has no `tests/env.json` and no mock. Its agent tasks name their input files and check the files the agent left ([docs/testing.md](docs/testing.md#agent-tasks)). A skill that is advice only (`web-app-automation`) has no `scripts/` and no script tests. It still needs agent tasks.
 
 ## Rules
 

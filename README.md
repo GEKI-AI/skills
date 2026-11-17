@@ -2,9 +2,9 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-Tested [Agent Skills](https://agentskills.io) for [Pi](https://pi.dev) and for other agents that read the Agent Skills format. A skill is a folder with a `SKILL.md` that tells the agent how to do a task, and a small script that does the work. These skills are integrations for the products a company already uses.
+Tested [Agent Skills](https://agentskills.io) for [Pi](https://pi.dev) and for other agents that read the Agent Skills format. A skill is a folder with a `SKILL.md` that tells the agent how to do a task, and in most cases a small script that does the work. Most of these skills are integrations for the products a company already uses. Some are advice for a kind of work, such as a report from data.
 
-Every skill is tested twice. Its script runs against a mock of the product's API, built from the vendor's OpenAPI spec where one exists. And a vanilla Pi has to finish example tasks with it, checked by the requests the mock saw. You do not need GEKI to use them.
+Every skill is tested. Its script runs against a mock of the product's API, built from the vendor's OpenAPI spec where one exists. And a vanilla Pi has to finish example tasks with it, checked by the requests the mock saw, or by the answer and the files for a skill without a product. You do not need GEKI to use them.
 
 The same skills are in the skill catalog of every GEKI Companybots organization: [geki.ai/skills](https://geki.ai/skills/). [Register](https://console.geki.ai/register?utm_source=github&utm_medium=readme&utm_campaign=skills) and get free starting credits.
 
@@ -28,6 +28,7 @@ The same skills are in the skill catalog of every GEKI Companybots organization:
 
 - [`forgejo`](skills/forgejo): Work with Forgejo code, issues, pull requests, comments, files and CI status.
 - [`github`](skills/github): Work with GitHub code, issues, pull requests, comments and files.
+- [`web-app-automation`](skills/web-app-automation): Work through a web app in a browser on your own.
 
 ### Finance
 
@@ -86,7 +87,7 @@ Do not paste tokens into the chat with the agent.
 ## How skills are tested
 
 - **Static checks**: the Agent Skills reference validator (`skills-ref`), a check of the metadata rules, a secret scan, lint, a license check, and a check that a changed skill has a higher `version` and a changelog entry.
-- **Script tests** with pytest against a mock. Where the vendor publishes an OpenAPI spec, the mock is [Prism](https://github.com/stoplightio/prism) built from that spec, which rejects requests that do not match it. Without a spec, the skill brings a small mock server with fixtures. The scripts run on Python 3.11 with only the packages the skill declares.
+- **Script tests** with pytest against a mock. Where the vendor publishes an OpenAPI spec, the mock is [Prism](https://github.com/stoplightio/prism) built from that spec, which rejects requests that do not match it. Without a spec, the skill brings a small mock server with fixtures. The scripts run on Python 3.11 with only the packages the skill declares. A skill without a script has no script tests.
 - **Agent tests**: a vanilla Pi with a model runs each task in `tests/tasks/` against the mock, up to three times. A task passes with two passing runs. The check reads the requests the mock logged: the right calls with the right fields on writes, and no forbidden calls.
 - **Real-API run** (optional, by hand, read only, against test accounts). It finds drift between the real API and the fixtures. It is not part of the checks above.
 

@@ -45,6 +45,8 @@ def packages_line(skill: Skill) -> str:
         lines.append("`npm install -g " + " ".join(skill.list("geki-npm")) + "`")
     if skill.list("geki-system"):
         lines.append("system packages: " + ", ".join(f"`{p}`" for p in skill.list("geki-system")))
+    if not lines and not skill.scripts:
+        return "The skill is a `SKILL.md` without a script. It needs no packages."
     if not lines:
         return "The skill needs Python 3.11+ and nothing else. It uses the standard library only."
     return "The skill needs Python 3.11+ and these packages: " + "; ".join(lines) + "."
@@ -166,9 +168,14 @@ def tests_block(skill: Skill) -> str:
     )
     tasks = len(list((skill.path / "tests" / "tasks").glob("*.yaml")))
     if not skill.outside:
+        script_line = (
+            f"- {tests} script tests (pytest), on Python 3.11 with only the declared packages."
+            if skill.scripts
+            else "- No script tests: the skill has no script."
+        )
         return "\n".join(
             [
-                f"- {tests} script tests (pytest), on Python 3.11 with only the declared packages.",
+                script_line,
                 f"- {tasks} agent tasks: a vanilla Pi with a model runs each task on files from the fixtures, up to three times. A task passes with two passing runs, judged by the answer and by the files the agent left.",
             ]
         )
@@ -188,10 +195,10 @@ def tested_line(result: dict | None) -> str:
     if not result:
         return NOT_TESTED
     script, agent = result.get("script", {}), result.get("agent", {})
+    script_part = f"{script['passed']} script tests passed, " if script.get("passed") else ""
     return (
         f"Last verified on {str(result.get('date', ''))[:10]} with the model {result.get('model')}: "
-        f"{script.get('passed', 0)} script tests passed, "
-        f"{agent.get('passed', 0)} of {agent.get('tasks', 0)} agent tasks passed."
+        f"{script_part}{agent.get('passed', 0)} of {agent.get('tasks', 0)} agent tasks passed."
     )
 
 

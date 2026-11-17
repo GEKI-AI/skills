@@ -10,7 +10,9 @@ Issues and pull requests on GitHub are welcome. The repository on GitHub is a mi
 
 A skill that connects an agent to a product through its API: one folder in `skills/`. Name a skill by product and task, for example `<product>-read`. Make a `-read` and a `-write` skill only when the split matters for access rights. Otherwise make one skill.
 
-A skill for a kind of work that any agent does on local files, without a product behind it, belongs here too. `data-report` is one: advice and a check for a report from data. Name it by the work. It has no credentials, hosts and setup, and its tests need no mock.
+A skill for a kind of work that any agent does, without a product behind it, belongs here too. `data-report` is one: advice and a check for a report from data. Name it by the work. It has no credentials, hosts and setup, and its tests need no mock.
+
+Such a skill can be advice only, without a script. `web-app-automation` is one. Add a script when it does something the agent cannot do well by itself, such as a check with a clear result. Do not add one to fill the folder.
 
 Skills that need features of one product (workspace files, chat cards) do not belong here.
 
@@ -21,10 +23,10 @@ skills/<name>/
   SKILL.md           short, under about 5,000 tokens
   README.md          for people: what it does, examples, install, variables, setup, tests
   CHANGELOG.md       one entry per version
-  scripts/           one CLI with subcommands and JSON output
+  scripts/           one CLI with subcommands and JSON output. A skill that is advice only has none
   references/        setup.md is required when the skill needs credentials
   assets/logo.svg    optional logo, SVG, at most 64 KB
-  tests/             script tests, fixtures, agent tasks
+  tests/             script tests (when there is a script), fixtures, agent tasks
 ```
 
 The rules for `SKILL.md` and its `metadata` are in [docs/metadata.md](docs/metadata.md). The skill folder is what users install, so it must not depend on anything outside it.
@@ -40,7 +42,7 @@ The rules for `SKILL.md` and its `metadata` are in [docs/metadata.md](docs/metad
 
 ## Tests
 
-Each skill needs script tests and agent tasks. [docs/testing.md](docs/testing.md) explains the mocks, the fixtures and the task format.
+Each skill needs agent tasks. A skill with a script needs script tests too. [docs/testing.md](docs/testing.md) explains the mocks, the fixtures and the task format.
 
 Run everything that does not need a secret:
 

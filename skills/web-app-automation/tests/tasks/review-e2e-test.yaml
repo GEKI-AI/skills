@@ -1,0 +1,12 @@
+name: review-e2e-test
+prompt: >
+  orders.spec.ts fails every few runs in our CI. And last week it stayed green
+  although saving an order was broken: the message came, but the order was not
+  in the list. Read the file and tell me what to change. Do not change the file.
+files: [orders.spec.ts]
+expect:
+  answer_contains: ["waitForTimeout", "list"]
+judge: >
+  The answer says that the tests must check the stored order, for example in
+  the order list, and not only the success message. It also says that the fixed
+  waits must go.

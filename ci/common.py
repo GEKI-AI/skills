@@ -109,6 +109,12 @@ class Skill:
         return list(dict.fromkeys(items(self.get(key))))
 
     @property
+    def scripts(self) -> list[Path]:
+        """The CLI files of the skill. A skill that is advice only has none."""
+        folder = self.path / "scripts"
+        return sorted([*folder.glob("*.py"), *folder.glob("*.mjs")])
+
+    @property
     def outside(self) -> bool:
         """The skill talks to a product. Without auth, credentials and hosts it works on local files only."""
         return any(self.list(key) for key in ("geki-auth", "geki-credentials", "geki-hosts"))

@@ -95,6 +95,19 @@ def test_a_skill_without_an_outside_system_needs_no_access_auth_and_test_variabl
     assert errors == ["geki-access is for a skill that talks to an outside system"]
 
 
+def test_a_script_needs_script_tests_and_a_skill_without_a_script_needs_none(tmp_path):
+    target = tmp_path / "data-report"
+    shutil.copytree(SKILLS / "data-report", target)
+    (target / "tests" / "test_data_report.py").unlink()
+    errors: list[str] = []
+    validate.check_skill(Skill(target), errors)
+    assert errors == ["tests/ needs script tests (test_*.py) for the script"]
+    shutil.rmtree(target / "scripts")
+    errors = []
+    validate.check_skill(Skill(target), errors)
+    assert errors == []
+
+
 def test_script_cannot_import_an_undeclared_package(tmp_path):
     target = tmp_path / "confluence"
     shutil.copytree(SKILLS / "confluence", target)

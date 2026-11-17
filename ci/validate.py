@@ -196,13 +196,12 @@ def check_files(skill: Skill, errors: list[str]) -> None:
     for required in ("README.md", "CHANGELOG.md"):
         if not (path / required).exists():
             errors.append(f"{required} is missing")
-    scripts = list((path / "scripts").glob("*.py")) + list((path / "scripts").glob("*.mjs"))
-    if not scripts:
-        errors.append("scripts/ needs a CLI")
     tests = list((path / "tests").glob("test_*.py"))
     tasks = list((path / "tests" / "tasks").glob("*.yaml"))
-    if not tests:
-        errors.append("tests/ needs script tests (test_*.py)")
+    if skill.scripts and not tests:
+        errors.append("tests/ needs script tests (test_*.py) for the script")
+    if tests and not skill.scripts:
+        errors.append("tests/ has script tests, but scripts/ has no CLI")
     if not tasks:
         errors.append("tests/tasks/ needs agent task files (*.yaml)")
     if skill.outside or (path / "tests" / "env.json").exists():

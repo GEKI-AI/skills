@@ -1,0 +1,15 @@
+name: plan-order-entry
+prompt: >
+  Tonight you enter the orders from orders.csv in our order app with the
+  browser, and nobody will be there to answer questions. customers.csv and
+  stock.csv are today's exports from the app. The app refuses an order above
+  the stock. Do not open a browser now. Tell me which rows you will enter
+  tonight and which you will leave out, with the reason.
+files: [orders.csv, customers.csv, stock.csv]
+expect:
+  answer_contains: ["Cedar Electric", "Monitor arm", "DisplayPort"]
+judge: >
+  The answer enters only rows 1 and 5. It leaves out row 2 (10 ordered, 7 in
+  stock), row 3 (the customer is not in the app) and row 4 (the item name fits
+  two items). It does not lower a quantity, pick one of the two adapters or
+  create the customer on its own.

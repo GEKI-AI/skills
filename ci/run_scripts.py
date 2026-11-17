@@ -13,8 +13,10 @@ runs in, run pytest, stop the mocks.
   as every session start does, and reported as warnings.
 
 The report is JSON: `{skill: {tests, passed, failed, skipped, ok}}`. A skill is ok
-when no test failed and at least one test passed: a skill without a passing test
-is never green. With `$GITHUB_OUTPUT` set, the report goes there as `report`.
+when no test failed and at least one test passed: a skill with a script and
+without a passing test is never green. A skill without a script has no script
+tests. It is ok here with zero tests, and its agent tasks verify it. With
+`$GITHUB_OUTPUT` set, the report goes there as `report`.
 """
 
 from __future__ import annotations
@@ -89,6 +91,9 @@ def read_junit(path: Path) -> dict:
 
 
 def run_skill(skill: Skill, env: str) -> dict:
+    if not skill.scripts:
+        print(f"{skill.name}: no script, so no script tests", flush=True)
+        return {"tests": 0, "failed": 0, "skipped": 0, "passed": 0, "ok": True}
     packages = sorted(skill.list("geki-python"))
     folder = WORK / f"env-{skill.name}"
     python = (make_image_env if env == "image" else make_empty_env)(packages, folder)
@@ -134,6 +139,8 @@ def main() -> int:
         mark = "ok  " if row["ok"] else "FAIL"
         print(
             f"{mark} {name}: {row['passed']} passed, {row['failed']} failed, {row['skipped']} skipped"
+            if row["tests"] or not row["ok"]
+            else f"{mark} {name}: no script"
         )
     text = json.dumps(report, sort_keys=True)
     if args.report:

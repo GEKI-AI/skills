@@ -48,6 +48,16 @@ def test_all_green_passes_and_returns_the_records():
     assert report[0].startswith("Skills / tests: PASS")
 
 
+def test_a_skill_without_a_script_is_green_by_its_agent_tasks():
+    data = needs(["a"])
+    data["scripts"] = job(
+        "success", report={"a": {"ok": True, "passed": 0, "failed": 0, "skipped": 0, "tests": 0}}
+    )
+    ok, report, green = aggregate.judge(data)
+    assert ok and [g["skill"] for g in green] == ["a"]
+    assert "no script, 1 of 1 agent tasks passed" in "\n".join(report)
+
+
 def test_nothing_to_test_passes_when_the_test_jobs_were_skipped():
     data = {
         "plan": plan([], verified={"a": {"run_url": "run-1", "date": "2026-11-01", "model": "m"}}),

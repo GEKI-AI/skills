@@ -66,9 +66,13 @@ def judge(needs: dict) -> tuple[bool, list[str], list[dict]]:
             green.append(record_for(name, fingerprint, scripts[name], agents[name]))
             row = scripts[name]
             tasks = agents[name].get("tasks", {})
+            script_part = (
+                f"{row['passed']} script tests passed ({row['skipped']} skipped)"
+                if row.get("tests")
+                else "no script"
+            )
             lines.append(
-                f"- {name}: verified now. {row['passed']} script tests passed"
-                f" ({row['skipped']} skipped), {sum(1 for t in tasks.values() if t['passed'])} of"
+                f"- {name}: verified now. {script_part}, {sum(1 for t in tasks.values() if t['passed'])} of"
                 f" {len(tasks)} agent tasks passed (reason: {plan.get('reasons', {}).get(name, '')})"
             )
         else:
