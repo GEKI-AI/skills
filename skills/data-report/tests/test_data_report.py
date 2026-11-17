@@ -80,7 +80,7 @@ def test_a_browser_measures_the_page_and_writes_the_pictures(tmp_path):
     result = report_check.json.loads(done.stdout)
     text = "\n".join(result["problems"])
     assert "at 390 px: the page scrolls sideways" in text
-    assert 'in "Open tickets": a <table>' in text
+    assert 'in "Open tickets": <table> is' in text
     assert "1 of 2 shapes are drawn outside the chart area" in text
     assert 'the label "Friday afternoon" runs out of its chart' in text
     assert sorted(p.name for p in shots.iterdir()) == ["page-1280.png", "page-390.png"]

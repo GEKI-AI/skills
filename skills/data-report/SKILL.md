@@ -4,7 +4,7 @@ description: Build a report from data, with findings, charts and tables, as one 
 license: Apache-2.0
 compatibility: Python 3.11+. With a Chrome on the machine the check measures the page, without one it checks the file and draws pictures with weasyprint and pdftoppm when they are installed.
 metadata:
-  version: "1"
+  version: "2"
   geki-tags: report, charts, html, bi, data-analysis, csv, excel
   geki-category: analytics
 ---
@@ -44,7 +44,10 @@ Looking at pictures of the page is the slow part of this work. Every picture you
 ```css
 .chart { overflow-x: auto; }
 .chart svg { min-width: 520px; width: 100%; height: auto; }
+.grid > * { min-width: 0; }
 ```
+
+The last line matters when charts sit in a grid or a flex row: without it an item grows as wide as its widest child and pushes the page sideways.
 
 ## The file
 

@@ -75,6 +75,18 @@ IN_PAGE = r"""
     }
     return '';
   };
+  const name = (el) => {
+    const cls = typeof el.className === 'string' ? el.className.trim().split(/\s+/).filter(Boolean).slice(0, 2) : [];
+    return `<${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${cls.length ? '.' + cls.join('.') : ''}>`;
+  };
+  const widest = (el) => {
+    const limit = el.getBoundingClientRect().width - 60;
+    const wide = [...el.querySelectorAll('*')].filter((c) => !c.ownerSVGElement && c.getBoundingClientRect().width >= limit);
+    const found = wide.find((c) => parseFloat(getComputedStyle(c).minWidth) > innerWidth) || wide[wide.length - 1];
+    const min = found ? getComputedStyle(found).minWidth : '';
+    if (!found || !(parseFloat(min) > 0 || /^(svg|img|pre|canvas)$/i.test(found.tagName))) return '';
+    return `, pushed out by ${name(found)} (${Math.round(found.getBoundingClientRect().width)} px${parseFloat(min) > 0 ? ', min-width ' + min : ''})`;
+  };
   const visible = (el) => { const s = getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.05; };
   const scrolls = (el) => { for (let n = el.parentElement; n && n !== document.documentElement; n = n.parentElement) { const o = getComputedStyle(n).overflowX; if (o === 'auto' || o === 'scroll' || o === 'hidden') return true; } return false; };
   const de = document.documentElement;
@@ -90,7 +102,7 @@ IN_PAGE = r"""
       const key = el.tagName + '|' + label(el);
       if (seen.has(key)) continue;
       seen.add(key);
-      add(`a <${el.tagName.toLowerCase()}> is ${Math.round(r.width)} px wide and reaches ${Math.round(r.right - innerWidth)} px past the edge`, label(el));
+      add(`${name(el)} is ${Math.round(r.width)} px wide and reaches ${Math.round(r.right - innerWidth)} px past the edge${widest(el)}`, label(el));
       if (seen.size >= 6) break;
     }
   }
